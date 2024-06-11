@@ -6,8 +6,8 @@ import invoiceGray from "../../../assets/invoiceGray.png";
 import invoiceBlack from "../../../assets/invoiceBlack.png";
 import reportGray from "../../../assets/reportGray.png";
 import reportBlack from "../../../assets/reportBlack.png";
-import companyGray from "../../../assets/companyGray.png";
-import companyBlack from "../../../assets/companyBlack.png";
+// import companyGray from "../../../assets/companyGray.png";
+// import companyBlack from "../../../assets/companyBlack.png";
 import calendarGray from "../../../assets/calendarGray.png";
 import calendarBlack from "../../../assets/calendarBlack.png";
 
