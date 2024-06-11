@@ -6,14 +6,12 @@ import invoiceGray from "../../../assets/invoiceGray.png";
 import invoiceBlack from "../../../assets/invoiceBlack.png";
 import reportGray from "../../../assets/reportGray.png";
 import reportBlack from "../../../assets/reportBlack.png";
-// import companyGray from "../../../assets/companyGray.png";
-// import companyBlack from "../../../assets/companyBlack.png";
 import calendarGray from "../../../assets/calendarGray.png";
 import calendarBlack from "../../../assets/calendarBlack.png";
 
 const NavLinks = [
   {
-    title: "Reimbursement",
+    title: "Staff Reimbursement",
     url: "/reimbursement",
     iconGray: transactionGray,
     iconBlack: transactionBlack,
@@ -40,7 +38,7 @@ const NavLinks = [
 
 const SideNavBar = ({ handleOpen }: { handleOpen?: () => void }) => {
   return (
-    <nav className="h-screen p-6 flex flex-col  lg:bg-[#FBFCF7]">
+    <nav className="h-full p-6 flex flex-col  ">
       <ul className="flex flex-col font-medium space-y-8 pt-6">
         {NavLinks.map((link, index) => (
           <li key={index}>

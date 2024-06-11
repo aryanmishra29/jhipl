@@ -1,0 +1,23 @@
+.custom-checkbox {
+    width: 20px;
+    height: 20px;
+    background-color: transparent;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    appearance: none;
+    cursor: pointer;
+    position: relative;
+}
+
+.custom-checkbox:checked {
+    background-color: #fff;
+}
+
+.custom-checkbox:checked::before {
+    content: '✓';
+    position: absolute;
+    top: 0px;
+    left: 2px;
+    font-size: 14px;
+    color: #000;
+}
