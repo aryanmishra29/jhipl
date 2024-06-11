@@ -17,7 +17,7 @@ const Layout = () => {
     return (
         <div className="relative  flex" >
 
-            <div className=" h-screen w-fit mt-16">
+            <div className=" h-screen bg-[#FBFCF7] w-fit mt-16">
                 <SideBar />
             </div>
             <div className="w-full  scroll-smooth  lg:overflow-scroll">

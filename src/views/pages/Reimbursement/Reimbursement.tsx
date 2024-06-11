@@ -28,7 +28,6 @@ const Reimbursements: Reimbursement[] = [
     { date: "18/11/23", amount: "-€250", account: "UTR1234567810, Ref: 011", costCenter: "Client", status: "Rejected" },
     { date: "18/11/23", amount: "+€1.380", account: "UTR1234567811, Ref: 012", costCenter: "Cafio", status: "Accepted" },
     { date: "18/11/23", amount: "-€460", account: "UTR1234567812, Ref: 013", costCenter: "Insurance Co.", status: "Rejected" },
-
 ];
 
 const customStyles = {
@@ -140,22 +139,26 @@ const ReimbursementTable: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className='w-full'>
-                        {Reimbursements.map((reimbursement, index) => (
-                            <tr key={index} className='text-[#252525]'>
-                                <td className="py-2 text-start px-4 border-b">
-                                    <input type="checkbox" className="custom-checkbox" />
-                                </td>
-                                <td className="py-2 px-4 text-start border-b">{reimbursement.date}</td>
-                                <td className="py-2 px-4 text-start border-b">{reimbursement.amount}</td>
-                                <td className="py-2 px-4 text-start border-b">{reimbursement.account}</td>
-                                <td className="py-2 px-4 text-start border-b">{reimbursement.costCenter}</td>
-                                <td className='py-2 px-4 text-center border-b'>
-                                    <div className={`w-fit rounded-full px-2 ${reimbursement.status === 'Accepted' ? 'bg-[#636C59] text-white' : 'bg-[#D7E6C5]'}`}>
-                                        {reimbursement.status}
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                        {Reimbursements.map((reimbursement, index) => {
+                            const amountValue = parseFloat(reimbursement.amount.replace(/[^0-9.-]+/g,""));
+                            const amountColor = amountValue > 0 ? 'text-green-500' : 'text-red-500';
+                            return (
+                                <tr key={index} className='text-[#252525]'>
+                                    <td className="py-2 text-start px-4 border-b">
+                                        <input type="checkbox" className="custom-checkbox" />
+                                    </td>
+                                    <td className="py-2 px-4 text-start border-b">{reimbursement.date}</td>
+                                    <td className={`py-2 px-4 text-start border-b ${amountColor}`}>{reimbursement.amount}</td>
+                                    <td className="py-2 px-4 text-start border-b">{reimbursement.account}</td>
+                                    <td className="py-2 px-4 text-start border-b">{reimbursement.costCenter}</td>
+                                    <td className='py-2 px-4 text-center border-b'>
+                                        <div className={`w-fit rounded-full px-2 ${reimbursement.status === 'Accepted' ? 'bg-[#636C59] text-white' : 'bg-[#D7E6C5]'}`}>
+                                            {reimbursement.status}
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
