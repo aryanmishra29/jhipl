@@ -1,23 +1,33 @@
 .custom-checkbox {
-    width: 20px;
-    height: 20px;
-    background-color: transparent;
-    border: 2px solid #ccc;
-    border-radius: 4px;
-    appearance: none;
-    cursor: pointer;
-    position: relative;
+  width: 20px;
+  height: 20px;
+  background-color: transparent;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  appearance: none;
+  cursor: pointer;
+  position: relative;
 }
 
 .custom-checkbox:checked {
-    background-color: #fff;
+  background-color: #fff;
 }
 
 .custom-checkbox:checked::before {
-    content: '✓';
-    position: absolute;
-    top: 0px;
-    left: 2px;
-    font-size: 14px;
-    color: #000;
+  content: "✓";
+  position: absolute;
+  top: 0px;
+  left: 2px;
+  font-size: 14px;
+  color: #000;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield; /* Hide the spinner in Firefox */
 }

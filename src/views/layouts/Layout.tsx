@@ -20,9 +20,9 @@ const Layout = () => {
             <div className=" h-screen w-fit mt-16">
                 <SideBar />
             </div>
-            <div className="w-full  scroll-smooth  overflow-scroll">
+            <div className="w-full  scroll-smooth  lg:overflow-scroll">
                 <Header />
-                <div className="relative flex items-center my-auto gap-4 lg:hidden">
+                <div className="relative flex z-10 items-center my-auto gap-4 lg:hidden">
                     <div
                         onClick={handleOpen}
                         className={cn(
