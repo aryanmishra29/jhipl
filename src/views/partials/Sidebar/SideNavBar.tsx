@@ -40,7 +40,7 @@ const NavLinks = [
 
 const SideNavBar = ({ handleOpen }: { handleOpen?: () => void }) => {
   return (
-    <nav className="h-screen p-6 flex flex-col bg-[#FBFCF7]">
+    <nav className="h-screen p-6 flex flex-col  lg:bg-[#FBFCF7]">
       <ul className="flex flex-col font-medium space-y-8 pt-6">
         {NavLinks.map((link, index) => (
           <li key={index}>
