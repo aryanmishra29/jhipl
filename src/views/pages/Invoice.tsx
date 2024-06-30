@@ -181,44 +181,22 @@ const InvoiceTable: React.FC = () => {
 
                         <div>
                             <input
-                                type="date"
-                                name="invoiceDate"
-                                placeholder="Invoice date"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.invoiceDate}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <input
-                                type="text"
-                                name="currency"
-                                placeholder="Currency"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.currency}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <input
-                                type="text"
-                                name="poNumber"
-                                placeholder="PO Number"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.poNumber}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <input
                                 type="text"
                                 name="glCode"
                                 placeholder="GL Code"
                                 className="w-full border rounded p-2 bg-white"
                                 value={formData.glCode}
+                                onChange={handleChange}
+                                required
+                            />
+                        </div>
+                        <div>
+                            <input
+                                type="date"
+                                name="invoiceDate"
+                                placeholder="Invoice date"
+                                className="w-full border rounded p-2 bg-white"
+                                value={formData.invoiceDate}
                                 onChange={handleChange}
                                 required
                             />
@@ -234,8 +212,19 @@ const InvoiceTable: React.FC = () => {
                                 required
                             />
                         </div>
+                        <div>
+                            <input
+                                type="text"
+                                name="poNumber"
+                                placeholder="PO Number"
+                                className="w-full border rounded p-2 bg-white"
+                                value={formData.poNumber}
+                                onChange={handleChange}
+                                required
+                            />
+                        </div>
                     </div>
-                    <div className="mt-12 grid grid-cols-1 md:grid-cols-6 gap-4">
+                    <div className="mt-12 grid grid-cols-2 md:grid-cols-6 gap-4">
                         <div className=' col-span-2'>
                             <label className="text-gray-500">Company name</label>
                             <input
