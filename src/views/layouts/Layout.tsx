@@ -18,7 +18,7 @@ const Layout = () => {
         <div className="lg:h-screen lg:overflow-y-hidden">
             <Header />
             <div className="relative  flex " >
-                <div className=" bg-[#FBFCF7] w-fit">
+                <div className=" h-screen bg-[#FBFCF7] w-fit">
                     <SideBar />
                 </div>
                 <div className="w-full  scroll-smooth  lg:overflow-scroll">
