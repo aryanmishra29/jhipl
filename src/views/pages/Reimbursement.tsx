@@ -28,6 +28,7 @@ const Reimbursements: Reimbursement[] = [
     { date: "18/11/23", amount: "-€250", account: "UTR1234567810, Ref: 011", costCenter: "Client", status: "Rejected" },
     { date: "18/11/23", amount: "+€1.380", account: "UTR1234567811, Ref: 012", costCenter: "Cafio", status: "Accepted" },
     { date: "18/11/23", amount: "-€460", account: "UTR1234567812, Ref: 013", costCenter: "Insurance Co.", status: "Rejected" },
+    
 ];
 
 const customStyles = {
@@ -93,12 +94,12 @@ const ReimbursementTable: React.FC = () => {
     };
 
     return (
-        <div className='lg:mt-28 mt-16 px-6  h-full '>
+        <div className='mt-6 px-6  h-full '>
             <div className="mb-6 space-y-6">
                 <h1 className="text-3xl text-black font-bold">Reimbursements</h1>
                 <div className="flex flex-wrap justify-between space-y-2 md:space-y-0 md:space-x-2">
                     <div className="w-auto relative inline-block">
-                        <button className="w-full md:w-auto bg-[#636C59] font-bold px-8 py-1.5 rounded-full flex items-center text-white justify-center">
+                        <button className="w-full md:w-auto bg-[#636C59] font-bold px-8 py-1.5 rounded-xl flex items-center text-white justify-center">
                             All time
                             <FaChevronDown className="ml-2" />
                         </button>
@@ -112,12 +113,12 @@ const ReimbursementTable: React.FC = () => {
                         <FaSearch className="absolute top-1/2 right-2 transform -translate-y-1/2 text-gray-400" />
                     </div>
                     <div className="w-auto">
-                        <button onClick={openModal} className="w-full md:w-auto bg-[#D7E6C5] text-black font-bold px-6 py-1.5 rounded-full flex items-center justify-center">
+                        <button onClick={openModal} className="w-full md:w-auto bg-[#D7E6C5] text-black font-bold px-6 py-1.5 rounded-xl flex items-center justify-center">
                             <FaPlus className="mr-2" /> Add income
                         </button>
                     </div>
                     <div className="w-auto">
-                        <button className="w-full md:w-auto bg-[#636C59] text-white px-6 font-bold py-1.5 rounded-full flex items-center justify-center">
+                        <button className="w-full md:w-auto bg-[#636C59] text-white px-6 font-bold py-1.5 rounded-xl flex items-center justify-center">
                             Filter <FaFilter className="ml-2" />
                         </button>
                     </div>
