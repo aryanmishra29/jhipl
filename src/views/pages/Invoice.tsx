@@ -38,7 +38,7 @@ const customStyles = {
         color: '#000000',
         borderRadius: '8px',
         boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-        padding: '20px',
+        padding: '40px',
         width: '1000px',
         maxWidth: '90%',
     },
