@@ -38,7 +38,7 @@ const NavLinks = [
 
 const SideNavBar = ({ handleOpen }: { handleOpen?: () => void }) => {
   return (
-    <nav className="h-full p-6 flex flex-col  ">
+    <nav className="h-full sm:p-6 p-2 flex flex-col  ">
       <ul className="flex flex-col font-medium space-y-8 pt-6">
         {NavLinks.map((link, index) => (
           <li key={index}>
@@ -47,7 +47,7 @@ const SideNavBar = ({ handleOpen }: { handleOpen?: () => void }) => {
               to={link.url}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-4 px-4 py-3 text-base rounded-lg transition-colors duration-200",
+                  "flex items-center gap-4 sm:px-4 pl-2 py-3 text-base rounded-lg transition-colors duration-200",
                   isActive ? "bg-[#EAF1DF] text-black" : "text-[#5F605E] hover:bg-[#EAF1DF]"
                 )
               }
