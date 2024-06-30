@@ -100,7 +100,7 @@ const InvoiceTable: React.FC = () => {
                 <div className="flex flex-wrap justify-between space-y-2 md:space-y-0 md:space-x-2">
                     <div className="w-auto relative inline-block">
                         <button onClick={openModal} className="w-full md:w-auto bg-[#D7E6C5] font-bold px-6 py-1.5 rounded-xl flex items-center text-black justify-center">
-                            <FaPlus className="mr-2" /> New Invoice
+                            <FaPlus className="mr-2" /> New reimbursement
                         </button>
                     </div>
                     <div className='flex gap-2'>
