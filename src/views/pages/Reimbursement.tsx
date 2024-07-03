@@ -114,7 +114,7 @@ const ReimbursementTable: React.FC = () => {
                     </div>
                     <div className="w-auto">
                         <button onClick={openModal} className="w-full md:w-auto bg-[#D7E6C5] text-black font-bold px-6 py-1.5 rounded-xl flex items-center justify-center">
-                            <FaPlus className="mr-2" /> Add income
+                            <FaPlus className="mr-2" /> New reimbursement
                         </button>
                     </div>
                     <div className="w-auto">
