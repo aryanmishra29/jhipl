@@ -138,12 +138,12 @@ const InvoiceTable: React.FC = () => {
             receipt,
             approvalDoc
         } = formData;
-
+    
         if (!invoiceNumber || !invoiceDate || !poNumber || !companyName || !baseAmount || !igst || !sgst || !cgst || !total || !glCode || !costCenter || !receipt || !approvalDoc) {
             alert('Please fill in all required fields.');
             return;
         }
-
+    
         const formDataToSubmit = new FormData();
         formDataToSubmit.append('number', invoiceNumber);
         formDataToSubmit.append('costCenter', costCenter);
@@ -156,9 +156,9 @@ const InvoiceTable: React.FC = () => {
         formDataToSubmit.append('sgst', sgst);
         formDataToSubmit.append('cgst', cgst);
         formDataToSubmit.append('igst', igst);
-        formDataToSubmit.append('receipt', receipt);
-        formDataToSubmit.append('approval', approvalDoc);
-
+        formDataToSubmit.append('receipts', receipt);  
+        formDataToSubmit.append('approvals', approvalDoc); 
+    
         try {
             await axios.post(`${baseUrl}/invoices`, formDataToSubmit, {
                 headers: {
@@ -171,6 +171,7 @@ const InvoiceTable: React.FC = () => {
             console.error("Error submitting form:", error);
         }
     };
+    
 
     return (
         <div className='mt-6 px-6 h-full'>
