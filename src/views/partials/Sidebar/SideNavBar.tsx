@@ -9,38 +9,45 @@ import reportBlack from "../../../assets/reportBlack.png";
 import calendarGray from "../../../assets/calendarGray.png";
 import calendarBlack from "../../../assets/calendarBlack.png";
 
-const NavLinks = [
-  {
-    title: "Staff Reimbursement",
-    url: "/reimbursement",
-    iconGray: transactionGray,
-    iconBlack: transactionBlack,
-  },
-  {
-    title: "Invoices",
-    url: "/invoices",
-    iconGray: invoiceGray,
-    iconBlack: invoiceBlack,
-  },
-  {
-    title: "Purchase Orders",
-    url: "/Purchase Orders",
-    iconGray: reportGray,
-    iconBlack: reportBlack,
-  },
-  {
-    title: "Calendar",
-    url: "/calendar",
-    iconGray: calendarGray,
-    iconBlack: calendarBlack,
-  }
-];
+const NavLinks = (userType: string) => {
+  // Determine if the user is an admin
+  const isAdmin = userType === "ADMIN";
 
-const SideNavBar = ({ handleOpen }: { handleOpen?: () => void }) => {
+  return [
+    {
+      title: "Staff Reimbursement",
+      url: `${isAdmin ? "/admin" : ""}/reimbursement`,
+      iconGray: transactionGray,
+      iconBlack: transactionBlack,
+    },
+    {
+      title: "Invoices",
+      url: `${isAdmin ? "/admin" : ""}/invoices`,
+      iconGray: invoiceGray,
+      iconBlack: invoiceBlack,
+    },
+    {
+      title: "Purchase Orders",
+      url: `${isAdmin ? "/admin" : ""}/purchase-orders`,
+      iconGray: reportGray,
+      iconBlack: reportBlack,
+    },
+    {
+      title: "Calendar",
+      url: `${isAdmin ? "/admin" : ""}/calendar`,
+      iconGray: calendarGray,
+      iconBlack: calendarBlack,
+    },
+  ];
+};
+
+const SideNavBar = ({ handleOpen }: { handleOpen: () => void }) => {
+  const userType = localStorage.getItem("userType") || ""; // Retrieve userType from localStorage
+
   return (
-    <nav className="h-full sm:p-6 p-2 flex flex-col  ">
+    <nav className="h-full sm:p-6 p-2 flex flex-col">
       <ul className="flex flex-col font-medium space-y-8 pt-6">
-        {NavLinks.map((link, index) => (
+        {NavLinks(userType).map((link, index) => (
           <li key={index}>
             <NavLink
               onClick={handleOpen}
@@ -59,7 +66,7 @@ const SideNavBar = ({ handleOpen }: { handleOpen?: () => void }) => {
                     alt={`${link.title} icon`}
                     className="w-6 h-6"
                   />
-                  <div className="flex-auto  font-semibold text-lg">{link.title}</div>
+                  <div className="flex-auto font-semibold text-lg">{link.title}</div>
                 </>
               )}
             </NavLink>

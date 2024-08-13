@@ -1,35 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaSearch, FaChevronDown, FaPlus, FaFilter } from 'react-icons/fa';
 import Modal from 'react-modal';
+import axios from 'axios';
 
 interface Reimbursement {
-    date: string;
-    amount: string;
-    account: string;
+    reimbursementId: string;
+    name: string;
+    glCode: string;
     costCenter: string;
+    date: string;
+    amount: number;
+    advance: number;
     status: string;
+    remarks: string;
+    utrNo: string;
 }
-
-const Reimbursements: Reimbursement[] = [
-    { date: "14/11/23", amount: "+€2.011", account: "UTR1234567890, Ref: 001", costCenter: "Company Co.", status: "Accepted" },
-    { date: "14/11/23", amount: "+€198", account: "UTR1234567891, Ref: 002", costCenter: "Acme", status: "Rejected" },
-    { date: "15/11/23", amount: "-€690", account: "UTR1234567892, Ref: 003", costCenter: "Streamio", status: "Rejected" },
-    { date: "15/11/23", amount: "+€1.380", account: "UTR1234567893, Ref: 004", costCenter: "Cafio", status: "Accepted" },
-    { date: "15/11/23", amount: "-€8.900", account: "UTR1234567894, Ref: 005", costCenter: "Insurance Co.", status: "Rejected" },
-    { date: "16/11/23", amount: "+€5.931", account: "UTR1234567895, Ref: 006", costCenter: "-", status: "Accepted" },
-    { date: "16/11/23", amount: "-€340", account: "UTR1234567896, Ref: 007", costCenter: "-", status: "Rejected" },
-    { date: "17/11/23", amount: "-€1.200", account: "UTR1234567897, Ref: 008", costCenter: "Supply Co.", status: "Rejected" },
-    { date: "17/11/23", amount: "+€8.305", account: "UTR1234567898, Ref: 009", costCenter: "Insurance Co.", status: "Accepted" },
-    { date: "17/11/23", amount: "-€450", account: "UTR1234567899, Ref: 010", costCenter: "Post Office", status: "Rejected" },
-    { date: "18/11/23", amount: "-€250", account: "UTR1234567810, Ref: 011", costCenter: "Client", status: "Rejected" },
-    { date: "18/11/23", amount: "+€1.380", account: "UTR1234567811, Ref: 012", costCenter: "Cafio", status: "Accepted" },
-    { date: "18/11/23", amount: "-€460", account: "UTR1234567812, Ref: 013", costCenter: "Insurance Co.", status: "Rejected" },
-    { date: "17/11/23", amount: "-€450", account: "UTR1234567899, Ref: 010", costCenter: "Post Office", status: "Rejected" },
-    { date: "18/11/23", amount: "-€250", account: "UTR1234567810, Ref: 011", costCenter: "Client", status: "Rejected" },
-    { date: "18/11/23", amount: "+€1.380", account: "UTR1234567811, Ref: 012", costCenter: "Cafio", status: "Accepted" },
-    { date: "18/11/23", amount: "-€460", account: "UTR1234567812, Ref: 013", costCenter: "Insurance Co.", status: "Rejected" },
-    
-];
 
 const customStyles = {
     content: {
@@ -53,9 +38,10 @@ const customStyles = {
 };
 
 const ReimbursementTable: React.FC = () => {
+    const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({
-        nameOfReimbursement: '',
+        nameOfEmployee: '',
         glCode: '',
         costCenter: '',
         date: '',
@@ -64,6 +50,50 @@ const ReimbursementTable: React.FC = () => {
         receipt: null,
         approvalDoc: null,
     });
+
+    // Dropdown data states
+    const [costCenters, setCostCenters] = useState<string[]>([]);
+    const [vendors, setVendors] = useState<string[]>([]);
+    const [glCodes, setGlCodes] = useState<string[]>([]);
+
+    const baseUrl = 'http://45.249.132.81';
+
+    // Fetch data from APIs
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [costCenterRes, vendorRes, glCodeRes] = await Promise.all([
+                    axios.get(`${baseUrl}/info/cost-centers`),
+                    axios.get(`${baseUrl}/info/vendors`),
+                    axios.get(`${baseUrl}/info/gl-codes`),
+                    fetchReimbursements()
+                ]);
+                setCostCenters(costCenterRes.data);
+                setVendors(vendorRes.data);
+                setGlCodes(glCodeRes.data);
+                // Use the reimbursement data fetched
+            } catch (error) {
+                console.error("Error fetching data", error);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    // Fetch reimbursements
+    const fetchReimbursements = async () => {
+        try {
+            const response = await fetch(`${baseUrl}/reimbursements`);
+            console.log(response);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const data: Reimbursement[] = await response.json();
+            setReimbursements(data);
+        } catch (error) {
+            console.error("Error fetching reimbursements:", error);
+        }
+    };
 
     const openModal = () => {
         setIsModalOpen(true);
@@ -82,19 +112,55 @@ const ReimbursementTable: React.FC = () => {
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const { nameOfReimbursement, glCode, costCenter, date, amount } = formData;
 
-        if (!nameOfReimbursement || !glCode || !costCenter || !date || !amount) {
+        const { nameOfEmployee, glCode, costCenter, date, amount, advance, receipt, approvalDoc } = formData;
+
+        if (!nameOfEmployee || !glCode || !costCenter || !date || !amount) {
             alert('Please fill in all required fields.');
             return;
         }
-        closeModal();
+
+        // Create FormData to handle file uploads
+        const form = new FormData();
+        form.append('name', nameOfEmployee);
+        form.append('glCode', glCode);
+        form.append('costCenter', costCenter);
+        form.append('date', date);
+        form.append('amount', amount);
+        form.append('advance', advance);
+        if (receipt) form.append('receipts', receipt);
+        if (approvalDoc) form.append('approvals', approvalDoc);
+
+        try {
+            await axios.post(`${baseUrl}/reimbursements`, form, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            // Optionally, add the new reimbursement to the state here or fetch the updated list
+            setReimbursements([...reimbursements, {
+                reimbursementId: 'new_id', // Generate a new unique ID as needed
+                name: nameOfEmployee,
+                glCode,
+                costCenter,
+                date,
+                amount: parseFloat(amount),
+                advance: parseFloat(advance),
+                status: 'Pending',
+                remarks: '',
+                utrNo: '',
+            }]);
+            closeModal();
+        } catch (error) {
+            console.error("Error submitting form", error);
+        }
     };
 
     return (
-        <div className='mt-6 px-6  h-full '>
+        <div className='mt-6 px-6 h-full'>
             <div className="mb-6 space-y-6">
                 <h1 className="text-3xl text-black font-bold">Reimbursements</h1>
                 <div className="flex flex-wrap justify-between space-y-2 md:space-y-0 md:space-x-2">
@@ -125,8 +191,8 @@ const ReimbursementTable: React.FC = () => {
                 </div>
             </div>
             {/* table */}
-            <div className="overflow-x-auto scroll-smooth">
-                <table className="w-full h-full  text-[#8E8F8E] bg-white">
+            <div className="overflow-x-auto noscroll-bar scroll-smooth">
+                <table className="w-full h-full text-[#8E8F8E] bg-white">
                     <thead className='min-w-full'>
                         <tr>
                             <th className="py-2 text-start px-4 border-b">
@@ -136,24 +202,25 @@ const ReimbursementTable: React.FC = () => {
                             <th className="py-2 text-start px-4 border-b">Amount</th>
                             <th className="py-2 text-start px-4 border-b">Account (UTR, Ref)</th>
                             <th className="py-2 text-start px-4 border-b">Cost Center</th>
+                            <th className="py-2 text-start px-4 border-b">Name of Employee</th>
                             <th className="py-2 text-start px-4 border-b">Status</th>
                         </tr>
                     </thead>
                     <tbody className='w-full'>
-                        {Reimbursements.map((reimbursement, index) => {
-                            const amountValue = parseFloat(reimbursement.amount.replace(/[^0-9.-]+/g,""));
-                            const amountColor = amountValue > 0 ? 'text-green-500' : 'text-red-500';
+                        {reimbursements.map((reimbursement) => {
+                            const amountColor = reimbursement.amount > 0 ? 'text-green-500' : 'text-red-500';
                             return (
-                                <tr key={index} className='text-[#252525]'>
+                                <tr key={reimbursement.reimbursementId} className='text-[#252525]'>
                                     <td className="py-2 text-start px-4 border-b">
                                         <input type="checkbox" className="custom-checkbox" />
                                     </td>
                                     <td className="py-2 px-4 text-start border-b">{reimbursement.date}</td>
-                                    <td className={`py-2 px-4 text-start border-b ${amountColor}`}>{reimbursement.amount}</td>
-                                    <td className="py-2 px-4 text-start border-b">{reimbursement.account}</td>
+                                    <td className={`py-2 px-4 text-start border-b ${amountColor}`}>{`€${reimbursement.amount.toFixed(2)}`}</td>
+                                    <td className="py-2 px-4 text-start border-b">{reimbursement.utrNo}</td>
                                     <td className="py-2 px-4 text-start border-b">{reimbursement.costCenter}</td>
+                                    <td className="py-2 px-4 text-start border-b">{reimbursement.name}</td>
                                     <td className='py-2 px-4 text-center border-b'>
-                                        <div className={`w-fit rounded-full px-2 ${reimbursement.status === 'Accepted' ? 'bg-[#636C59] text-white' : 'bg-[#D7E6C5]'}`}>
+                                        <div className={`w-fit rounded-full px-2 ${reimbursement.status === 'APPROVED' ? 'bg-[#636C59] text-white' : reimbursement.status === 'PENDING' ? 'bg-[#FEC400] text-[#252525]' : 'bg-[#E7E7E7] text-[#C2C2C2]'} py-1`}>
                                             {reimbursement.status}
                                         </div>
                                     </td>
@@ -164,43 +231,52 @@ const ReimbursementTable: React.FC = () => {
                 </table>
             </div>
 
+            {/* Add Reimbursement Modal */}
             <Modal
                 isOpen={isModalOpen}
                 onRequestClose={closeModal}
                 style={customStyles}
-                contentLabel="New Income Modal"
-                ariaHideApp={false}
+                contentLabel="Add Reimbursement Modal"
             >
-                <h2 className="text-2xl font-bold  mb-4">New income</h2>
+                <h2 className="text-2xl font-bold mb-4">Add New Reimbursement</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-4">
-                        <input
-                            type="text"
-                            name="nameOfReimbursement"
-                            placeholder="Name of reimbursement"
+                        <select
+                            name="nameOfEmployee"
                             className="w-full border rounded p-2 bg-white"
-                            value={formData.nameOfReimbursement}
+                            value={formData.nameOfEmployee}
                             onChange={handleChange}
                             required
-                        />
-                        <input
-                            type="text"
+                        >
+                            <option value="">Select Vendor (Employee Name)</option>
+                            {(Array.isArray(vendors) ? vendors : ["Dummy Vendor 1", "Dummy Vendor 2"]).map((vendor, index) => (
+                                <option key={index} value={vendor}>{vendor}</option>
+                            ))}
+                        </select>
+                        <select
                             name="glCode"
-                            placeholder="GL Code"
                             className="w-full border rounded p-2 bg-white"
                             value={formData.glCode}
                             onChange={handleChange}
                             required
-                        />
-                        <input
-                            type="text"
+                        >
+                            <option value="">Select GL Code</option>
+                            {(Array.isArray(glCodes) ? glCodes : ["Dummy GL Code 1", "Dummy GL Code 2"]).map((code, index) => (
+                                <option key={index} value={code}>{code}</option>
+                            ))}
+                        </select>
+                        <select
                             name="costCenter"
-                            placeholder="Cost Center"
                             className="w-full border rounded p-2 bg-white"
                             value={formData.costCenter}
                             onChange={handleChange}
                             required
-                        />
+                        >
+                            <option value="">Select Cost Center</option>
+                            {(Array.isArray(costCenters) ? costCenters : ["Dummy Cost Center 1", "Dummy Cost Center 2"]).map((center, index) => (
+                                <option key={index} value={center}>{center}</option>
+                            ))}
+                        </select>
                         <input
                             type="date"
                             name="date"
@@ -209,46 +285,46 @@ const ReimbursementTable: React.FC = () => {
                             onChange={handleChange}
                             required
                         />
-                        <div className="sm:flex  sm:space-x-4 sm:space-y-0 space-y-4">
+                        <div className="sm:flex sm:space-x-4 sm:space-y-0 space-y-4">
                             <input
                                 type="number"
                                 name="amount"
                                 placeholder="Amount"
-                                className="flex-1 border rounded p-2 bg-white"
+                                className="w-full sm:w-1/2 border rounded p-2 bg-white"
                                 value={formData.amount}
                                 onChange={handleChange}
                                 required
-                                pattern="[0-9]*"
                             />
                             <input
                                 type="number"
                                 name="advance"
-                                placeholder="Advance (optional)"
-                                className="flex-1 border rounded p-2 bg-white"
+                                placeholder="Advance"
+                                className="w-full sm:w-1/2 border rounded p-2 bg-white"
                                 value={formData.advance}
                                 onChange={handleChange}
-                                pattern="[0-9]*"
+                                required
                             />
                         </div>
-                        <div>
-                            <label className="block text-gray-700">Receipt:</label>
-                            <input
-                                type="file"
-                                name="receipt"
-                                className="w-full border rounded p-2 bg-white"
-                                onChange={handleChange}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-gray-700">Approval Document:</label>
-                            <input
-                                type="file"
-                                name="approvalDoc"
-                                className="w-full border rounded p-2 bg-white"
-                                onChange={handleChange}
-                            />
-                        </div>
-                        <button type="submit" className="w-full bg-green-500 text-white p-2 rounded mt-4">Save</button>
+                        <input
+                            type="file"
+                            name="receipt"
+                            className="w-full border rounded p-2 bg-white"
+                            onChange={handleChange}
+                        />
+                        <input
+                            type="file"
+                            name="approvalDoc"
+                            className="w-full border rounded p-2 bg-white"
+                            onChange={handleChange}
+                        />
+                    </div>
+                    <div className="flex justify-end space-x-4 mt-6">
+                        <button type="button" className="bg-gray-300 text-gray-700 px-4 py-2 rounded" onClick={closeModal}>
+                            Cancel
+                        </button>
+                        <button type="submit" className="bg-[#636C59] text-white px-4 py-2 rounded">
+                            Add Reimbursement
+                        </button>
                     </div>
                 </form>
             </Modal>

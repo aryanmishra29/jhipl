@@ -3,13 +3,15 @@ import { FaChevronDown, FaPlus, FaFilter, FaCheck, FaTimes } from 'react-icons/f
 import Modal from 'react-modal';
 import axios from 'axios';
 
-interface Invoice {
-    invoiceId: string;
-    number: string;
+interface PurchaseOrder {
+    poId: string;
+    poNumber: string;
     date: string;
     costCenter: string;
     finalAmount: number;
     status: string;
+    vendor: string;
+    remarks?: string; // Added remarks field
 }
 
 const customStyles = {
@@ -33,14 +35,12 @@ const customStyles = {
     },
 };
 
-const InvoiceTable: React.FC = () => {
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
+const PurchaseOrder: React.FC = () => {
+    const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({
-        invoiceNumber: '',
-        invoiceDate: '',
         poNumber: '',
-        currency: '',
+        date: '',
         companyName: '',
         baseAmount: '',
         igst: '',
@@ -49,15 +49,13 @@ const InvoiceTable: React.FC = () => {
         total: '',
         glCode: '',
         costCenter: '',
-        receipt: null,
-        approvalDoc: null,
+        remarks: '' // Added remarks field
     });
 
     const [costCenters, setCostCenters] = useState<string[]>([]);
     const [vendors, setVendors] = useState<string[]>([]);
     const [glCodes, setGlCodes] = useState<string[]>([]);
     const baseUrl = 'http://45.249.132.81';
-
 
     useEffect(() => {
         const fetchDropdownData = async () => {
@@ -80,29 +78,31 @@ const InvoiceTable: React.FC = () => {
         fetchDropdownData();
     }, []);
 
-    const fetchInvoices = async () => {
+    const fetchPurchaseOrders = async () => {
         try {
-            const response = await axios.get(`${baseUrl}/invoices`);
+            const response = await axios.get(`${baseUrl}/purchase-orders`);
 
             if (response.status !== 200) {
-                throw new Error('Failed to fetch invoices');
+                throw new Error('Failed to fetch purchase orders');
             }
-            const data: Invoice[] = response.data.map((invoice: any) => ({
-                invoiceId: invoice.invoiceId,
-                number: invoice.number,
-                date: invoice.date,
-                costCenter: invoice.costCenter,
-                finalAmount: invoice.finalAmount,
-                status: invoice.status,
+            const data: PurchaseOrder[] = response.data.map((po: any) => ({
+                poId: po.poId,
+                poNumber: po.poNumber,
+                date: po.date,
+                costCenter: po.costCenter,
+                finalAmount: po.finalAmount,
+                status: po.status,
+                vendor: po.vendor,
+                remarks: po.remarks // Include remarks in the data
             }));
-            setInvoices(data);
+            setPurchaseOrders(data);
         } catch (error) {
-            console.error('Error fetching invoices:', error);
+            console.error('Error fetching purchase orders:', error);
         }
     };
 
     useEffect(() => {
-        fetchInvoices();
+        fetchPurchaseOrders();
     }, []);
 
     const openModal = () => {
@@ -114,19 +114,18 @@ const InvoiceTable: React.FC = () => {
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | any>) => {
-        const { name, value, files } = e.target;
+        const { name, value } = e.target;
         setFormData((prev) => ({
             ...prev,
-            [name]: files ? files[0] : value,
+            [name]: value,
         }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const {
-            invoiceNumber,
-            invoiceDate,
             poNumber,
+            date,
             companyName,
             baseAmount,
             igst,
@@ -135,38 +134,32 @@ const InvoiceTable: React.FC = () => {
             total,
             glCode,
             costCenter,
-            receipt,
-            approvalDoc
+            remarks 
         } = formData;
 
-        if (!invoiceNumber || !invoiceDate || !poNumber || !companyName || !baseAmount || !igst || !sgst || !cgst || !total || !glCode || !costCenter || !receipt || !approvalDoc) {
+        if (!poNumber || !date || !companyName || !baseAmount || !igst || !sgst || !cgst || !total || !glCode || !costCenter) {
             alert('Please fill in all required fields.');
             return;
         }
 
-        const formDataToSubmit = new FormData();
-        formDataToSubmit.append('number', invoiceNumber);
-        formDataToSubmit.append('costCenter', costCenter);
-        formDataToSubmit.append('glCode', glCode);
-        formDataToSubmit.append('poNumber', poNumber);
-        formDataToSubmit.append('date', invoiceDate);
-        formDataToSubmit.append('baseAmount', baseAmount);
-        formDataToSubmit.append('finalAmount', total);
-        formDataToSubmit.append('vendor', companyName);
-        formDataToSubmit.append('sgst', sgst);
-        formDataToSubmit.append('cgst', cgst);
-        formDataToSubmit.append('igst', igst);
-        formDataToSubmit.append('receipt', receipt);
-        formDataToSubmit.append('approval', approvalDoc);
+        const formDataToSubmit = {
+            poNumber,
+            vendor: companyName,
+            date,
+            costCenter,
+            glCode,
+            baseAmount: parseFloat(baseAmount),
+            finalAmount: parseFloat(total),
+            sgst: parseFloat(sgst),
+            cgst: parseFloat(cgst),
+            igst: parseFloat(igst),
+            remarks // Include remarks in POST request
+        };
 
         try {
-            await axios.post(`${baseUrl}/invoices`, formDataToSubmit, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
+            await axios.post(`${baseUrl}/purchase-orders`, formDataToSubmit);
             closeModal();
-            fetchInvoices();
+            fetchPurchaseOrders();
         } catch (error) {
             console.error("Error submitting form:", error);
         }
@@ -175,11 +168,11 @@ const InvoiceTable: React.FC = () => {
     return (
         <div className='mt-6 px-6 h-full'>
             <div className="mb-6 space-y-6">
-                <h1 className="text-3xl text-black font-bold">Invoices</h1>
+                <h1 className="text-3xl text-black font-bold">Purchase Orders</h1>
                 <div className="flex flex-wrap justify-between space-y-2 md:space-y-0 md:space-x-2">
                     <div className="w-auto relative inline-block">
                         <button onClick={openModal} className="w-full md:w-auto bg-[#D7E6C5] font-bold px-6 py-1.5 rounded-xl flex items-center text-black justify-center">
-                            <FaPlus className="mr-2" /> New invoice
+                            <FaPlus className="mr-2" /> New PO
                         </button>
                     </div>
                     <div className='flex gap-2'>
@@ -204,7 +197,7 @@ const InvoiceTable: React.FC = () => {
                             <th className="py-2 text-start px-4 border-b">
                                 <input type="checkbox" className="custom-checkbox" />
                             </th>
-                            <th className="py-2 text-start px-4 border-b">Invoice nr.</th>
+                            <th className="py-2 text-start px-4 border-b">PO Number</th>
                             <th className="py-2 text-start px-4 border-b">Date</th>
                             <th className="py-2 text-start px-4 border-b">Cost Center</th>
                             <th className="py-2 text-start px-4 border-b">Amount</th>
@@ -212,18 +205,18 @@ const InvoiceTable: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className='w-full'>
-                        {invoices.map((invoice) => (
-                            <tr key={invoice.invoiceId} className='text-[#252525]'>
+                        {purchaseOrders.map((po) => (
+                            <tr key={po.poId} className='text-[#252525]'>
                                 <td className="py-2 text-start px-4 border-b">
                                     <input type="checkbox" className="custom-checkbox" />
                                 </td>
-                                <td className="py-2 px-4 text-start border-b">{invoice.number}</td>
-                                <td className="py-2 px-4 text-start border-b">{invoice.date}</td>
-                                <td className="py-2 px-4 text-start border-b">{invoice.costCenter}</td>
-                                <td className="py-2 px-4 text-start border-b">€{invoice.finalAmount.toFixed(2)}</td>
+                                <td className="py-2 px-4 text-start border-b">{po.poNumber}</td>
+                                <td className="py-2 px-4 text-start border-b">{po.date}</td>
+                                <td className="py-2 px-4 text-start border-b">{po.costCenter}</td>
+                                <td className="py-2 px-4 text-start border-b">€{po.finalAmount.toFixed(2)}</td>
                                 <td className='py-2 px-4 text-center border-b'>
-                                    <div className={`w-fit rounded-full px-2 ${invoice.status === 'APPROVED' ? 'bg-[#636C59] text-white' : 'bg-[#D7E6C5]'}`}>
-                                        {invoice.status === 'APPROVED' ? <FaCheck /> : <FaTimes />}
+                                    <div className={`w-fit rounded-full px-2 ${po.status === 'APPROVED' ? 'bg-[#636C59] text-white' : 'bg-[#D7E6C5]'}`}>
+                                        {po.status === 'APPROVED' ? <FaCheck /> : <FaTimes />}
                                     </div>
                                 </td>
                             </tr>
@@ -235,169 +228,155 @@ const InvoiceTable: React.FC = () => {
                 isOpen={isModalOpen}
                 onRequestClose={closeModal}
                 style={customStyles}
-                contentLabel="Invoice Modal"
+                contentLabel="Purchase Order Modal"
             >
-                <h2 className="text-2xl font-bold mb-4">Add New Invoice</h2>
+                <h2 className="text-2xl font-bold mb-4">Add New Purchase Order</h2>
                 <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-36 gap-y-4">
-                        <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="form-group">
+                            <label htmlFor="poNumber" className="block font-bold mb-1">PO Number</label>
                             <input
                                 type="text"
-                                name="invoiceNumber"
-                                placeholder="Invoice number"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.invoiceNumber}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <select
-                                name="glCode"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.glCode}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="">Select GL Code</option>
-                                {(glCodes.length > 0 ? glCodes : ["GL001", "GL002", "GL003"]).map((code, index) => (
-                                    <option key={index} value={code}>{code}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <input
-                                type="date"
-                                name="invoiceDate"
-                                placeholder="Invoice date"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.invoiceDate}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <select
-                                name="costCenter"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.costCenter}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="">Select Cost Center</option>
-                                {(costCenters.length > 0 ? costCenters : ["CC001", "CC002", "CC003"]).map((center, index) => (
-                                    <option key={index} value={center}>{center}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <input
-                                type="text"
+                                id="poNumber"
                                 name="poNumber"
-                                placeholder="PO Number"
-                                className="w-full border rounded p-2 bg-white"
                                 value={formData.poNumber}
                                 onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded bg-transparent"
                                 required
                             />
                         </div>
-                    </div>
-                    <div className="mt-12 grid grid-cols-2 md:grid-cols-6 gap-4">
-                        <div className='col-span-2'>
-                            <label className="text-gray-500">Company name</label>
+                        <div className="form-group">
+                            <label htmlFor="date" className="block font-bold mb-1">Date</label>
+                            <input
+                                type="date"
+                                id="date"
+                                name="date"
+                                value={formData.date}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded bg-transparent"
+                                required
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="companyName" className="block font-bold mb-1">Vendor</label>
                             <select
+                                id="companyName"
                                 name="companyName"
-                                className="w-full border rounded p-2 mt-1 bg-white"
                                 value={formData.companyName}
                                 onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded bg-transparent"
                                 required
                             >
-                                <option value="">Select Vendor</option>
-                                {(vendors.length > 0 ? vendors : ["Vendor A", "Vendor B", "Vendor C"]).map((vendor, index) => (
-                                    <option key={index} value={vendor}>{vendor}</option>
+                                {vendors.map(vendor => (
+                                    <option key={vendor} value={vendor}>{vendor}</option>
                                 ))}
                             </select>
                         </div>
-                        <div>
-                            <label className="text-gray-500">Base Amount</label>
+                        <div className="form-group">
+                            <label htmlFor="baseAmount" className="block font-bold mb-1">Base Amount</label>
                             <input
                                 type="number"
+                                id="baseAmount"
                                 name="baseAmount"
-                                className="w-full border rounded p-2 mt-1 bg-white"
                                 value={formData.baseAmount}
                                 onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded bg-transparent"
                                 required
                             />
                         </div>
-                        <div>
-                            <label className="text-gray-500">IGST</label>
+                        <div className="form-group">
+                            <label htmlFor="igst" className="block font-bold mb-1">IGST</label>
                             <input
                                 type="number"
+                                id="igst"
                                 name="igst"
-                                className="w-full border rounded p-2 mt-1 bg-white"
                                 value={formData.igst}
                                 onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded bg-transparent"
                                 required
                             />
                         </div>
-                        <div>
-                            <label className="text-gray-500">SGST</label>
+                        <div className="form-group">
+                            <label htmlFor="sgst" className="block font-bold mb-1">SGST</label>
                             <input
                                 type="number"
+                                id="sgst"
                                 name="sgst"
-                                className="w-full border rounded p-2 mt-1 bg-white"
                                 value={formData.sgst}
                                 onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded bg-transparent"
                                 required
                             />
                         </div>
-                        <div>
-                            <label className="text-gray-500">CGST</label>
+                        <div className="form-group">
+                            <label htmlFor="cgst" className="block font-bold mb-1">CGST</label>
                             <input
                                 type="number"
+                                id="cgst"
                                 name="cgst"
-                                className="w-full border rounded p-2 mt-1 bg-white"
                                 value={formData.cgst}
                                 onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded bg-transparent"
                                 required
                             />
                         </div>
-                        <div>
-                            <label className="text-gray-500">Total</label>
+                        <div className="form-group">
+                            <label htmlFor="total" className="block font-bold mb-1">Total</label>
                             <input
                                 type="number"
+                                id="total"
                                 name="total"
-                                className="w-full border rounded p-2 mt-1 bg-white"
                                 value={formData.total}
                                 onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded bg-transparent"
                                 required
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="glCode" className="block font-bold mb-1">GL Code</label>
+                            <select
+                                id="glCode"
+                                name="glCode"
+                                value={formData.glCode}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded bg-transparent"
+                                required
+                            >
+                                {glCodes.map(code => (
+                                    <option key={code} value={code}>{code}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="costCenter" className="block font-bold mb-1">Cost Center</label>
+                            <select
+                                id="costCenter"
+                                name="costCenter"
+                                value={formData.costCenter}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded bg-transparent"
+                                required
+                            >
+                                {costCenters.map(center => (
+                                    <option key={center} value={center}>{center}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="remarks" className="block font-bold mb-1">Remarks</label>
+                            <input
+                                type="text"
+                                id="remarks"
+                                name="remarks"
+                                value={formData.remarks}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded bg-transparent"
                             />
                         </div>
                     </div>
-                    <div className='flex gap-4'>
-                        <div className="mt-4">
-                            <label className="text-gray-500">Receipt</label>
-                            <input
-                                type="file"
-                                name="receipt"
-                                className="w-full border rounded p-2 mt-1 bg-white"
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div className="mt-4">
-                            <label className="text-gray-500">Approval document</label>
-                            <input
-                                type="file"
-                                name="approvalDoc"
-                                className="w-full border rounded p-2 mt-1 bg-white"
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex justify-between">
-                        <button type="submit" className="bg-[#D7E6C5] text-black p-2 rounded">Save invoice</button>
+                    <div className="flex justify-end gap-4 mt-6">
+                        <button onClick={closeModal} type="button" className="bg-gray-300 px-6 py-2 rounded text-black">Cancel</button>
+                        <button type="submit" className="bg-[#636C59] px-6 py-2 rounded text-white">Submit</button>
                     </div>
                 </form>
             </Modal>
@@ -405,5 +384,4 @@ const InvoiceTable: React.FC = () => {
     );
 };
 
-
-export default InvoiceTable;
+export default PurchaseOrder;
