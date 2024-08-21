@@ -43,6 +43,7 @@ const InvoiceTable: React.FC = () => {
         currency: '',
         companyName: '',
         baseAmount: '',
+        paymentType: '',
         igst: '',
         sgst: '',
         cgst: '',
@@ -56,7 +57,10 @@ const InvoiceTable: React.FC = () => {
     const [costCenters, setCostCenters] = useState<string[]>([]);
     const [vendors, setVendors] = useState<string[]>([]);
     const [glCodes, setGlCodes] = useState<string[]>([]);
-    const baseUrl = 'http://45.249.132.81';
+    const [pos, setPos] = useState<string[]>([]);
+    const [gsts, setGsts] = useState<string[]>([]);
+    const baseUrl = 'http://localhost:8080';
+    const userId = localStorage.getItem('userId');
 
 
     useEffect(() => {
@@ -65,15 +69,21 @@ const InvoiceTable: React.FC = () => {
                 const costCentersResponse = await axios.get(`${baseUrl}/info/cost-centers`);
                 const vendorsResponse = await axios.get(`${baseUrl}/info/vendors`);
                 const glCodesResponse = await axios.get(`${baseUrl}/info/gl-codes`);
+                const poResponse = await axios.get(`${baseUrl}/purchase-orders`);
+                const gstResponse = await axios.get(`${baseUrl}/info/gst`);
 
                 setCostCenters(Array.isArray(costCentersResponse.data) ? costCentersResponse.data : []);
                 setVendors(Array.isArray(vendorsResponse.data) ? vendorsResponse.data : []);
                 setGlCodes(Array.isArray(glCodesResponse.data) ? glCodesResponse.data : []);
+                setGsts(Array.isArray(gstResponse.data) ? gstResponse.data : []);
+                setPos(poResponse.data.poNumber);
             } catch (error) {
                 console.error("Error fetching dropdown data:", error);
                 setCostCenters([]);
                 setVendors([]);
                 setGlCodes([]);
+                setGsts([]);
+                setPos([]);
             }
         };
 
@@ -82,7 +92,7 @@ const InvoiceTable: React.FC = () => {
 
     const fetchInvoices = async () => {
         try {
-            const response = await axios.get(`${baseUrl}/invoices`);
+            const response = await axios.get(`${baseUrl}/invoices/user/${userId}`);
 
             if (response.status !== 200) {
                 throw new Error('Failed to fetch invoices');
@@ -129,6 +139,7 @@ const InvoiceTable: React.FC = () => {
             poNumber,
             companyName,
             baseAmount,
+            paymentType,
             igst,
             sgst,
             cgst,
@@ -139,7 +150,7 @@ const InvoiceTable: React.FC = () => {
             approvalDoc
         } = formData;
     
-        if (!invoiceNumber || !invoiceDate || !poNumber || !companyName || !baseAmount || !igst || !sgst || !cgst || !total || !glCode || !costCenter || !receipt || !approvalDoc) {
+        if (!invoiceNumber || !invoiceDate || !poNumber || !companyName || !baseAmount || !igst || !sgst || !cgst || !total || !glCode || !costCenter || !receipt || !approvalDoc ||!paymentType) {
             alert('Please fill in all required fields.');
             return;
         }
@@ -151,6 +162,7 @@ const InvoiceTable: React.FC = () => {
         formDataToSubmit.append('poNumber', poNumber);
         formDataToSubmit.append('date', invoiceDate);
         formDataToSubmit.append('baseAmount', baseAmount);
+        formDataToSubmit.append('paymentType', paymentType);
         formDataToSubmit.append('finalAmount', total);
         formDataToSubmit.append('vendor', companyName);
         formDataToSubmit.append('sgst', sgst);
@@ -174,235 +186,328 @@ const InvoiceTable: React.FC = () => {
     
 
     return (
-        <div className='mt-6 px-6 h-full'>
-            <div className="mb-6 space-y-6">
-                <h1 className="text-3xl text-black font-bold">Invoices</h1>
-                <div className="flex flex-wrap justify-between space-y-2 md:space-y-0 md:space-x-2">
-                    <div className="w-auto relative inline-block">
-                        <button onClick={openModal} className="w-full md:w-auto bg-[#D7E6C5] font-bold px-6 py-1.5 rounded-xl flex items-center text-black justify-center">
-                            <FaPlus className="mr-2" /> New invoice
-                        </button>
-                    </div>
-                    <div className='flex gap-2'>
-                        <div className="w-auto relative inline-block">
-                            <button className="w-full md:w-auto bg-[#636C59] font-bold px-8 py-1.5 rounded-xl flex items-center text-white justify-center">
-                                All time
-                                <FaChevronDown className="ml-2" />
-                            </button>
-                        </div>
-                        <div className="w-auto relative inline-block">
-                            <button className="w-full md:w-auto bg-[#636C59] text-white px-6 font-bold py-1.5 rounded-xl flex items-center justify-center">
-                                Filter <FaFilter className="ml-2" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
+      <div className="mt-6 px-6 h-full">
+        <div className="mb-6 space-y-6">
+          <h1 className="text-3xl text-black font-bold">Invoices</h1>
+          <div className="flex flex-wrap justify-between space-y-2 md:space-y-0 md:space-x-2">
+            <div className="w-auto relative inline-block">
+              <button
+                onClick={openModal}
+                className="w-full md:w-auto bg-[#D7E6C5] font-bold px-6 py-1.5 rounded-xl flex items-center text-black justify-center"
+              >
+                <FaPlus className="mr-2" /> New invoice
+              </button>
             </div>
-            <div className="overflow-x-auto noscroll-bar scroll-smooth">
-                <table className="w-full h-full text-[#8E8F8E] bg-white">
-                    <thead className='min-w-full'>
-                        <tr>
-                            <th className="py-2 text-start px-4 border-b">
-                                <input type="checkbox" className="custom-checkbox" />
-                            </th>
-                            <th className="py-2 text-start px-4 border-b">Invoice nr.</th>
-                            <th className="py-2 text-start px-4 border-b">Date</th>
-                            <th className="py-2 text-start px-4 border-b">Cost Center</th>
-                            <th className="py-2 text-start px-4 border-b">Amount</th>
-                            <th className="py-2 text-start px-4 border-b">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className='w-full'>
-                        {invoices.map((invoice) => (
-                            <tr key={invoice.invoiceId} className='text-[#252525]'>
-                                <td className="py-2 text-start px-4 border-b">
-                                    <input type="checkbox" className="custom-checkbox" />
-                                </td>
-                                <td className="py-2 px-4 text-start border-b">{invoice.number}</td>
-                                <td className="py-2 px-4 text-start border-b">{invoice.date}</td>
-                                <td className="py-2 px-4 text-start border-b">{invoice.costCenter}</td>
-                                <td className="py-2 px-4 text-start border-b">€{invoice.finalAmount.toFixed(2)}</td>
-                                <td className='py-2 px-4 text-center border-b'>
-                                    <div className={`w-fit rounded-full px-2 ${invoice.status === 'APPROVED' ? 'bg-[#636C59] text-white' : 'bg-[#D7E6C5]'}`}>
-                                        {invoice.status === 'APPROVED' ? <FaCheck /> : <FaTimes />}
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div className="flex gap-2">
+              <div className="w-auto relative inline-block">
+                <button className="w-full md:w-auto bg-[#636C59] font-bold px-8 py-1.5 rounded-xl flex items-center text-white justify-center">
+                  All time
+                  <FaChevronDown className="ml-2" />
+                </button>
+              </div>
+              <div className="w-auto relative inline-block">
+                <button className="w-full md:w-auto bg-[#636C59] text-white px-6 font-bold py-1.5 rounded-xl flex items-center justify-center">
+                  Filter <FaFilter className="ml-2" />
+                </button>
+              </div>
             </div>
-            <Modal
-                isOpen={isModalOpen}
-                onRequestClose={closeModal}
-                style={customStyles}
-                contentLabel="Invoice Modal"
-            >
-                <h2 className="text-2xl font-bold mb-4">Add New Invoice</h2>
-                <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-36 gap-y-4">
-                        <div>
-                            <input
-                                type="text"
-                                name="invoiceNumber"
-                                placeholder="Invoice number"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.invoiceNumber}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <select
-                                name="glCode"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.glCode}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="">Select GL Code</option>
-                                {(glCodes.length > 0 ? glCodes : ["GL001", "GL002", "GL003"]).map((code, index) => (
-                                    <option key={index} value={code}>{code}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <input
-                                type="date"
-                                name="invoiceDate"
-                                placeholder="Invoice date"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.invoiceDate}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <select
-                                name="costCenter"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.costCenter}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="">Select Cost Center</option>
-                                {(costCenters.length > 0 ? costCenters : ["CC001", "CC002", "CC003"]).map((center, index) => (
-                                    <option key={index} value={center}>{center}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <input
-                                type="text"
-                                name="poNumber"
-                                placeholder="PO Number"
-                                className="w-full border rounded p-2 bg-white"
-                                value={formData.poNumber}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                    </div>
-                    <div className="mt-12 grid grid-cols-2 md:grid-cols-6 gap-4">
-                        <div className='col-span-2'>
-                            <label className="text-gray-500">Company name</label>
-                            <select
-                                name="companyName"
-                                className="w-full border rounded p-2 mt-1 bg-white"
-                                value={formData.companyName}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="">Select Vendor</option>
-                                {(vendors.length > 0 ? vendors : ["Vendor A", "Vendor B", "Vendor C"]).map((vendor, index) => (
-                                    <option key={index} value={vendor}>{vendor}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-gray-500">Base Amount</label>
-                            <input
-                                type="number"
-                                name="baseAmount"
-                                className="w-full border rounded p-2 mt-1 bg-white"
-                                value={formData.baseAmount}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="text-gray-500">IGST</label>
-                            <input
-                                type="number"
-                                name="igst"
-                                className="w-full border rounded p-2 mt-1 bg-white"
-                                value={formData.igst}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="text-gray-500">SGST</label>
-                            <input
-                                type="number"
-                                name="sgst"
-                                className="w-full border rounded p-2 mt-1 bg-white"
-                                value={formData.sgst}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="text-gray-500">CGST</label>
-                            <input
-                                type="number"
-                                name="cgst"
-                                className="w-full border rounded p-2 mt-1 bg-white"
-                                value={formData.cgst}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="text-gray-500">Total</label>
-                            <input
-                                type="number"
-                                name="total"
-                                className="w-full border rounded p-2 mt-1 bg-white"
-                                value={formData.total}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                    </div>
-                    <div className='flex gap-4'>
-                        <div className="mt-4">
-                            <label className="text-gray-500">Receipt</label>
-                            <input
-                                type="file"
-                                name="receipt"
-                                className="w-full border rounded p-2 mt-1 bg-white"
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                        <div className="mt-4">
-                            <label className="text-gray-500">Approval document</label>
-                            <input
-                                type="file"
-                                name="approvalDoc"
-                                className="w-full border rounded p-2 mt-1 bg-white"
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex justify-between">
-                        <button type="submit" className="bg-[#D7E6C5] text-black p-2 rounded">Save invoice</button>
-                    </div>
-                </form>
-            </Modal>
+          </div>
         </div>
+        <div className="overflow-x-auto noscroll-bar scroll-smooth">
+          <table className="w-full h-full text-[#8E8F8E] bg-white">
+            <thead className="min-w-full">
+              <tr>
+                <th className="py-2 text-start px-4 border-b">
+                  <input type="checkbox" className="custom-checkbox" />
+                </th>
+                <th className="py-2 text-start px-4 border-b">Invoice nr.</th>
+                <th className="py-2 text-start px-4 border-b">Date</th>
+                <th className="py-2 text-start px-4 border-b">Cost Center</th>
+                <th className="py-2 text-start px-4 border-b">Amount</th>
+                <th className="py-2 text-start px-4 border-b">Status</th>
+              </tr>
+            </thead>
+            <tbody className="w-full">
+              {invoices.map((invoice) => (
+                <tr key={invoice.invoiceId} className="text-[#252525]">
+                  <td className="py-2 text-start px-4 border-b">
+                    <input type="checkbox" className="custom-checkbox" />
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {invoice.number}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {invoice.date}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {invoice.costCenter}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    €{invoice.finalAmount.toFixed(2)}
+                  </td>
+                  <td className="py-2 px-4 text-center border-b">
+                    <div
+                      className={`w-fit rounded-full px-2 ${
+                        invoice.status === "APPROVED"
+                          ? "bg-[#636C59] text-white"
+                          : "bg-[#D7E6C5]"
+                      }`}
+                    >
+                      {invoice.status === "APPROVED" ? (
+                        <FaCheck />
+                      ) : (
+                        <FaTimes />
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Modal
+          isOpen={isModalOpen}
+          onRequestClose={closeModal}
+          style={customStyles}
+          contentLabel="Invoice Modal"
+        >
+          <h2 className="text-2xl font-bold mb-4">Add New Invoice</h2>
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-36 gap-y-4">
+              <div>
+                <input
+                  type="text"
+                  name="invoiceNumber"
+                  placeholder="Invoice number"
+                  className="w-full border rounded p-2 bg-white"
+                  value={formData.invoiceNumber}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <select
+                  name="glCode"
+                  className="w-full border rounded p-2 bg-white"
+                  value={formData.glCode}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select GL Code</option>
+                  {(glCodes.length > 0
+                    ? glCodes
+                    : ["GL001", "GL002", "GL003"]
+                  ).map((code, index) => (
+                    <option key={index} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <input
+                  type="date"
+                  name="invoiceDate"
+                  placeholder="Invoice date"
+                  className="w-full border rounded p-2 bg-white"
+                  value={formData.invoiceDate}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <select
+                  name="costCenter"
+                  className="w-full border rounded p-2 bg-white"
+                  value={formData.costCenter}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Cost Center</option>
+                  {(costCenters.length > 0
+                    ? costCenters
+                    : ["CC001", "CC002", "CC003"]
+                  ).map((center, index) => (
+                    <option key={index} value={center}>
+                      {center}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            
+              <div>
+                <select
+                  name="poNumber"
+                  className="w-full border rounded p-2 bg-white"
+                  value={formData.poNumber}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select PO Number</option>
+                  {(pos.length > 0 ? pos : ["PO001", "PO002", "PO003"]).map(
+                    (po, index) => (
+                      <option key={index} value={po}>
+                        {po}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+              <div>
+                <select
+                  name="paymentType"
+                  className="w-full border rounded p-2 bg-white"
+                  value={formData.paymentType}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Payment Type</option>
+                  {(["HALF","FULL","PARTIAL"]
+                  ).map((center, index) => (
+                    <option key={index} value={center}>
+                      {center}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="mt-12 grid grid-cols-2 md:grid-cols-6 gap-4">
+              <div className="col-span-2">
+                <label className="text-gray-500">Company name</label>
+                <select
+                  name="companyName"
+                  className="w-full border rounded p-2 mt-1 bg-white"
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Vendor</option>
+                  {(vendors.length > 0
+                    ? vendors
+                    : ["Vendor A", "Vendor B", "Vendor C"]
+                  ).map((vendor, index) => (
+                    <option key={index} value={vendor}>
+                      {vendor}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-500">Base Amount</label>
+                <input
+                  type="number"
+                  name="baseAmount"
+                  className="w-full border rounded p-2 mt-1 bg-white"
+                  value={formData.baseAmount}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-gray-500">IGST</label>
+                <select
+                  name="igst"
+                  className="w-full border rounded p-2 mt-1 bg-white"
+                  value={formData.igst}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select IGST</option>
+                  {(gsts.length > 0
+                    ? gsts
+                    : ["IGST 5%", "IGST 12%", "IGST 18%", "IGST 28%"]
+                  ).map((gst, index) => (
+                    <option key={index} value={gst}>
+                      {gst}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-500">SGST</label>
+                <select
+                  name="sgst"
+                  className="w-full border rounded p-2 mt-1 bg-white"
+                  value={formData.sgst}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select SGST</option>
+                  {(gsts.length > 0
+                    ? gsts
+                    : ["SGST 5%", "SGST 12%", "SGST 18%", "SGST 28%"]
+                  ).map((gst, index) => (
+                    <option key={index} value={gst}>
+                      {gst}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-500">CGST</label>
+                <select
+                  name="cgst"
+                  className="w-full border rounded p-2 mt-1 bg-white"
+                  value={formData.cgst}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select CGST</option>
+                  {(gsts.length > 0
+                    ? gsts
+                    : ["CGST 5%", "CGST 12%", "CGST 18%", "CGST 28%"]
+                  ).map((gst, index) => (
+                    <option key={index} value={gst}>
+                      {gst}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-500">Total</label>
+                <input
+                  type="number"
+                  name="total"
+                  className="w-full border rounded p-2 mt-1 bg-white"
+                  value={formData.total}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <div className="mt-4">
+                <label className="text-gray-500">Receipt</label>
+                <input
+                  type="file"
+                  name="receipt"
+                  className="w-full border rounded p-2 mt-1 bg-white"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="mt-4">
+                <label className="text-gray-500">Approval document</label>
+                <input
+                  type="file"
+                  name="approvalDoc"
+                  className="w-full border rounded p-2 mt-1 bg-white"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-between">
+              <button
+                type="submit"
+                className="bg-[#D7E6C5] text-black p-2 rounded"
+              >
+                Save invoice
+              </button>
+            </div>
+          </form>
+        </Modal>
+      </div>
     );
 };
 

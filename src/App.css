@@ -31,3 +31,7 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield; /* Hide the spinner in Firefox */
 }
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* Inverts color to make it visible */
+}
+
