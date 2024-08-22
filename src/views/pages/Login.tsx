@@ -6,7 +6,7 @@ function Login() {
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
 
-    const isDevelopment = false;
+    const isDevelopment = true;
     const baseUrl = 'https://jhipl.grobird.in';
 
     useEffect(() => {

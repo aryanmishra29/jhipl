@@ -52,6 +52,7 @@ const PurchaseOrder: React.FC = () => {
     cgst: "",
     total: "",
     narration: "",
+
   });
 
   const [vendors, setVendors] = useState<string[]>([]);
@@ -165,6 +166,7 @@ const PurchaseOrder: React.FC = () => {
       cgst,
       total,
       narration,
+      poRequestId,
     } = formData;
 
     console.log(formData);
@@ -184,9 +186,9 @@ const PurchaseOrder: React.FC = () => {
       alert("Please fill in all required fields.");
       return;
     }
-
+ console.log(selectedPoId)
     const formDataToSubmit = {
-      poRequestId : selectedPoId,
+      poRequestId: selectedPoId,
       poNumber,
       vendor,
       paymentType,
@@ -199,7 +201,6 @@ const PurchaseOrder: React.FC = () => {
       narration,
     };
 
-    console.log(formDataToSubmit);
 
     try {
       const response = await axios.post(
@@ -207,10 +208,11 @@ const PurchaseOrder: React.FC = () => {
         formDataToSubmit,
         {
           headers: {
-            "Content-Type": "application/json",
-          },
+            'Content-Type': 'multipart/form-data',
+        },
         }
       );
+      console.log(response)
 
       if (response.status === 200) {
         closeModal();
@@ -278,7 +280,7 @@ const PurchaseOrder: React.FC = () => {
       if (response.status === 200) {
         location.reload();
       }
-    } catch {}
+    } catch { }
   };
 
   const handleDownloadClick = (poRequestId: string, poId: string) => {
