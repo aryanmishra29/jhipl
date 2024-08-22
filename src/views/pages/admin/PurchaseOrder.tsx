@@ -52,7 +52,7 @@ const PurchaseOrder: React.FC = () => {
     cgst: "",
     total: "",
     narration: "",
-
+    poFile: null
   });
 
   const [vendors, setVendors] = useState<string[]>([]);
@@ -141,15 +141,17 @@ const PurchaseOrder: React.FC = () => {
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setIsAcceptModalOpen(false);
   };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | any>
   ) => {
     const { name, value } = e.target;
+    const files = e.currentTarget.files;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: files ? files[0] : value,
     }));
   };
 
@@ -166,7 +168,7 @@ const PurchaseOrder: React.FC = () => {
       cgst,
       total,
       narration,
-      poRequestId,
+      poFile,
     } = formData;
 
     console.log(formData);
@@ -181,7 +183,8 @@ const PurchaseOrder: React.FC = () => {
       !sgst ||
       !cgst ||
       !total ||
-      !narration
+      !narration ||
+      !poFile
     ) {
       alert("Please fill in all required fields.");
       return;
@@ -199,6 +202,7 @@ const PurchaseOrder: React.FC = () => {
       cgst,
       igst,
       narration,
+      po: poFile,
     };
 
 
@@ -569,6 +573,12 @@ const PurchaseOrder: React.FC = () => {
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-transparent border p-2"
               />
             </div>
+            <input
+              type="file"
+              name="poFile"
+              className="w-full border rounded p-2 bg-white"
+              onChange={handleChange}
+            />
           </div>
           <div className="mt-4">
             <button
