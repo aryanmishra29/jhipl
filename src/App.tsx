@@ -1,7 +1,8 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import Layout from "./views/layouts/Layout";
 import Staff from "./views/pages/Welcome/Staff";
-import Build from "./views/pages/Build";
+// import Build from "./views/pages/Build";
+import Purchase from "./views/pages/purchase/Purchase";
 import ReimbursementTable from "./views/pages/Reimbursement";
 import InvoiceTable from "./views/pages/Invoice";
 import Calendar from "./views/pages/Calendar/Calendar";
@@ -11,7 +12,7 @@ import AdminDashboard from "./views/pages/admin/AdminDashboard";
 import './App.css';
 import AdminReimbursementTable from "./views/pages/admin/AdminReimbursementTable";
 import AdminInvoiceTable from "./views/pages/admin/AdminInvoiceTable";
-import PurchaseOrder from "./views/pages/purchase/PurchaseOrder";
+import PurchaseOrder from "./views/pages/admin/PurchaseOrder";
 
 function App() {
   const location = useLocation();
@@ -34,8 +35,8 @@ function App() {
         <Route path="reimbursement" element={<ReimbursementTable />} />
         <Route path="invoices" element={<InvoiceTable />} />
         <Route path="calendar" element={<Calendar />} />
-        <Route path="*" element={<Build />} />
-        <Route path="purchase-orders" element={<PurchaseOrder />} />
+        {/* <Route path="*" element={<Build />} /> */}
+        <Route path="purchase-orders" element={<Purchase />} />
 
       </Route>
 
@@ -51,7 +52,7 @@ function App() {
         <Route path="reimbursement" element={<AdminReimbursementTable />} />
         <Route path="invoices" element={<AdminInvoiceTable />} />
         <Route path="calendar" element={<Calendar />} />
-        <Route path="*" element={<Build />} />
+        {/* <Route path="*" element={<Build />} /> */}
         <Route path="purchase-orders" element={<PurchaseOrder />} />
       </Route>
     </Routes>

@@ -14,6 +14,7 @@ interface Reimbursement {
     status: string;
     remarks: string;
     utrNo: string;
+    userId: string
 }
 
 const customStyles = {
@@ -56,7 +57,9 @@ const ReimbursementTable: React.FC = () => {
     const [vendors, setVendors] = useState<string[]>([]);
     const [glCodes, setGlCodes] = useState<string[]>([]);
 
-    const baseUrl = 'http://45.249.132.81';
+    const baseUrl = 'https://jhipl.grobird.in';
+    const user_id = '6abddd01-464f-410b-935f-ae42e6afdd4c'
+
 
     // Fetch data from APIs
     useEffect(() => {
@@ -83,7 +86,7 @@ const ReimbursementTable: React.FC = () => {
     // Fetch reimbursements
     const fetchReimbursements = async () => {
         try {
-            const response = await fetch(`${baseUrl}/reimbursements`);
+            const response = await fetch(`${baseUrl}/reimbursements/user/${user_id}`);
             console.log(response);
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -130,6 +133,7 @@ const ReimbursementTable: React.FC = () => {
         form.append('date', date);
         form.append('amount', amount);
         form.append('advance', advance);
+        form.append('userId', user_id)
         if (receipt) form.append('receipts', receipt);
         if (approvalDoc) form.append('approvals', approvalDoc);
 
@@ -152,6 +156,7 @@ const ReimbursementTable: React.FC = () => {
                 status: 'Pending',
                 remarks: '',
                 utrNo: '',
+                userId: user_id
             }]);
             closeModal();
         } catch (error) {
