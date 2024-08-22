@@ -78,7 +78,7 @@ const InvoiceTable: React.FC = () => {
   const [igsts, setIgsts] = useState<string[]>([]);
 
   const baseUrl = 'https://jhipl.grobird.in';
-  const user_id = '6abddd01-464f-410b-935f-ae42e6afdd4c'
+  const user_id = localStorage.getItem("userId");
 
   useEffect(() => {
     const fetchDropdownData = async () => {

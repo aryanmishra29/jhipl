@@ -36,7 +36,7 @@ const Purchase: React.FC = () => {
     });
 
     const baseUrl = 'https://jhipl.grobird.in';
-    const user_id = '6abddd01-464f-410b-935f-ae42e6afdd4c'
+    const user_id = localStorage.getItem("userId") || '';
 
 
     const fetchPurchaseOrders = async () => {
@@ -152,7 +152,7 @@ const Purchase: React.FC = () => {
                                 <td className="py-2 px-4 text-start border-b">{po.date}</td>
                                 <td className="py-2 px-4 text-start border-b">{po.remainingAmount}</td>
                                 <td className="py-2 px-4 text-start border-b">€{po.finalAmount.toFixed(4)}</td>
-                                <td className="py-2 px-4 text-start border-b text-center">{po.paymentType}</td>
+                                <td className="py-2 px-4 text-start border-b">{po.paymentType}</td>
 
                             </tr>
                         ))}

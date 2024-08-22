@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Login() {
@@ -6,22 +6,41 @@ function Login() {
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
 
-    const isDevelopment = true;
+    const isDevelopment = false;
+    const baseUrl = 'https://jhipl.grobird.in';
+
+    useEffect(() => {
+        // Check if userId and userType are already in local storage
+        const userType = localStorage.getItem("userType");
+        const userId = localStorage.getItem("userId");
+
+        if (userType && userId) {
+            // Redirect to the appropriate page based on userType
+            if (userType === "ADMIN") {
+                navigate("/admin");
+            } else {
+                navigate("/");
+            }
+        }
+    }, [navigate]);
 
     const handleLogin = async (e: any) => {
         e.preventDefault();
 
         if (isDevelopment) {
-            let simulatedResponse = { UserType: "" };
+            let simulatedResponse = { UserType: "", userId: "" };
 
             if (email === "admin@example.com" && password === "admin123") {
                 simulatedResponse.UserType = "ADMIN";
+                simulatedResponse.userId = "simulated-admin-id";
             } else if (email === "user@example.com" && password === "user123") {
                 simulatedResponse.UserType = "USER";
+                simulatedResponse.userId = "simulated-user-id";
             }
 
             if (simulatedResponse.UserType) {
                 localStorage.setItem("userType", simulatedResponse.UserType);
+                localStorage.setItem("userId", simulatedResponse.userId);
                 if (simulatedResponse.UserType === "ADMIN") {
                     navigate("/admin");
                 } else {
@@ -31,18 +50,27 @@ function Login() {
                 alert("Invalid credentials");
             }
         } else {
-            const response = await fetch(`/auth/login?email=${email}&password=${password}`);
-            const data = await response.json();
+            try {
+                const params = new URLSearchParams({ email, password });
+                const response = await fetch(`${baseUrl}/auth/login?${params.toString()}`, {
+                    method: 'GET',
+                });
+                const data = await response.json();
 
-            if (data.UserType) {
-                localStorage.setItem("userType", data.UserType);
-                if (data.UserType === "ADMIN") {
-                    navigate("/admin");
+                if (data.type && data.userId) {
+                    localStorage.setItem("userType", data.type);
+                    localStorage.setItem("userId", data.userId);
+                    if (data.type === "ADMIN") {
+                        navigate("/admin");
+                    } else {
+                        navigate("/");
+                    }
                 } else {
-                    navigate("/");
+                    alert("Invalid credentials");
                 }
-            } else {
-                alert("Invalid credentials");
+            } catch (error) {
+                console.error("Error during login:", error);
+                alert("An error occurred. Please try again.");
             }
         }
     };

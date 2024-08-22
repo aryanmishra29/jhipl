@@ -58,7 +58,7 @@ const ReimbursementTable: React.FC = () => {
     const [glCodes, setGlCodes] = useState<string[]>([]);
 
     const baseUrl = 'https://jhipl.grobird.in';
-    const user_id = '6abddd01-464f-410b-935f-ae42e6afdd4c'
+    const user_id =  localStorage.getItem("userId") || '';
 
 
     // Fetch data from APIs
@@ -144,9 +144,8 @@ const ReimbursementTable: React.FC = () => {
                 },
             });
 
-            // Optionally, add the new reimbursement to the state here or fetch the updated list
             setReimbursements([...reimbursements, {
-                reimbursementId: 'new_id', // Generate a new unique ID as needed
+                reimbursementId: 'new_id',
                 name: nameOfEmployee,
                 glCode,
                 costCenter,
