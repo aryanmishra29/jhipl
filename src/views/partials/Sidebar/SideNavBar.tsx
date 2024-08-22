@@ -73,10 +73,7 @@ const SideNavBar = ({ handleOpen }: { handleOpen: () => void }) => {
           </li>
         ))}
       </ul>
-      <div className="border-y-2 py-5 text-gray-900 font-bold mt-8">
-        <p className="text-gray-600">Total on your accounts</p>
-        <p className="text-3xl font-extrabold mt-2">€35.927</p>
-      </div>
+   
     </nav>
   );
 };

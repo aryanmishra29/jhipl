@@ -19,7 +19,7 @@ interface Invoice {
   sgst: string;
   cgst: string;
   igst: string;
-  UtrNo: string;
+  utrNo: string;
   status: string;
   description: string;
   narration: string;
@@ -54,7 +54,7 @@ const AdminInvoiceTable: React.FC = () => {
   }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [, setSelectedInvoice] = useState<Invoice | null>(null);
   const [formData, setFormData] = useState({
     invoiceId: "",
     invoiceNumber: "",
@@ -72,7 +72,7 @@ const AdminInvoiceTable: React.FC = () => {
     description: "",
     narration: "",
     status: "",
-    UtrNo: "",
+    utrNo: "",
   });
 
   const [costCenters, setCostCenters] = useState<string[]>([]);
@@ -82,6 +82,9 @@ const AdminInvoiceTable: React.FC = () => {
   const [cgsts, setCgsts] = useState<string[]>([]);
   const [poDetails, setPoDetails] = useState<Map<string, string>>(new Map());
   const [idToPo, setIdToPo] = useState<Map<string, string>>(new Map());
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
 
   const [sgsts, setSgsts] = useState<string[]>([]);
   const [igsts, setIgsts] = useState<string[]>([]);
@@ -163,7 +166,7 @@ const AdminInvoiceTable: React.FC = () => {
       description: invoice.description,
       narration: invoice.narration,
       status: invoice.status,
-      UtrNo: invoice.UtrNo,
+      utrNo: invoice.utrNo,
     });
     setIsModalOpen(true);
   };
@@ -187,15 +190,17 @@ const AdminInvoiceTable: React.FC = () => {
   };
 
 
-  const handleDownloadExcel = async (startDate: string, endDate: string) => {
+  const handleDownloadExcel = async () => {
     try {
       const response = await fetch(
         `${baseUrl}/invoices/excel?startDate=${startDate}&endDate=${endDate}`
       );
+
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
       const data = await response.json();
+      console.log(data)
       const worksheet = XLSX.utils.json_to_sheet(data);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Invoices");
@@ -209,6 +214,7 @@ const AdminInvoiceTable: React.FC = () => {
     invoiceId: string,
     fileType: "receipts" | "approvals"
   ) => {
+    console.log(invoiceId)
     try {
       const response = await fetch(
         `${baseUrl}/invoices/${invoiceId}/${fileType}`
@@ -233,14 +239,15 @@ const AdminInvoiceTable: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | any>
   ) => {
     const { name, value } = e.target;
-    const files = e.currentTarget.files;   
-      setFormData((prev) => ({
-        ...prev,
-        [name]: files ? files[0] : value,
-      }));
-    }
-  
-  const handleSave = async () => {
+    const files = e.currentTarget.files;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: files ? files[0] : value,
+    }));
+  }
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (formData) {
       const updateRequest = {
         invoiceId: formData.invoiceId,
@@ -256,20 +263,21 @@ const AdminInvoiceTable: React.FC = () => {
         sgst: formData.sgst,
         cgst: formData.cgst,
         igst: formData.igst,
-        UtrNo: formData.UtrNo,
+        utrNo: formData.utrNo,
         status: formData.status,
         description: formData.description,
         narration: formData.narration,
       };
-      
+
       try {
-        const response = await fetch(`https://jhipl.grobird.in/invoices`, {
-          method: "PUT",
+        const response = await fetch(`https://jhipl.grobird.in/invoices/update`, {
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(updateRequest),
         });
+
 
         if (!response.ok) {
           throw new Error("Failed to update invoice");
@@ -279,6 +287,7 @@ const AdminInvoiceTable: React.FC = () => {
 
         setIsModalOpen(false);
         setSelectedInvoice(null);
+        location.reload()
       } catch (error) {
         console.error("Error updating invoice:", error);
       }
@@ -290,22 +299,42 @@ const AdminInvoiceTable: React.FC = () => {
       <div className="mb-6 space-y-6">
         <h1 className="text-3xl text-black font-bold">Invoices</h1>
         <div className="flex flex-wrap justify-between space-y-2 md:space-y-0 md:space-x-2">
-          <div className="w-auto relative inline-block">
-            <button
-              onClick={() => handleDownloadExcel()}
-              className="w-full md:w-auto bg-[#D7E6C5] font-bold px-6 py-1.5 rounded-xl flex items-center text-black justify-center"
-            >
-              Download as Excel
-            </button>
+          <div className="flex justify-between items-center">
+            <div className="flex  items-center gap-6">
+              <div className="flex space-x-2 items-center">
+                <label htmlFor="startDate" className="text-black font-semibold">Start Date:</label>
+                <input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="border bg-transparent text-black rounded p-2"
+                />
+              </div>
+              <div className="flex space-x-2 items-center">
+                <label htmlFor="endDate" className="text-black font-semibold">End Date:</label>
+                <input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="border bg-transparent text-black rounded p-2"
+                />
+              </div>
+              <button onClick={handleDownloadExcel} className="bg-[#D7E6C5] text-black font-bold px-6 py-1.5 rounded-xl flex items-center">
+                Download as Excel
+              </button>
+            </div>
+
           </div>
           <div className="flex gap-2">
-            <div className="w-auto relative inline-block">
+            <div className="w-auto">
               <button className="w-full md:w-auto bg-[#636C59] font-bold px-8 py-1.5 rounded-xl flex items-center text-white justify-center">
                 All time
                 <FaChevronDown className="ml-2" />
               </button>
             </div>
-            <div className="w-auto relative inline-block">
+            <div className="w-auto">
               <button className="w-full md:w-auto bg-[#636C59] text-white px-6 font-bold py-1.5 rounded-xl flex items-center justify-center">
                 Filter <FaFilter className="ml-2" />
               </button>
@@ -314,19 +343,19 @@ const AdminInvoiceTable: React.FC = () => {
         </div>
       </div>
       <div className="overflow-x-auto noscroll-bar scroll-smooth">
-        <table className="w-full h-full text-[#8E8F8E] bg-white">
-          <thead className="min-w-full">
+        <table className="w-full h-full text-[#8E8F8E] bg-white border-collapse">
+          <thead className="bg-gray-100">
             <tr>
               <th className="py-2 text-start px-4 border-b">
                 <input type="checkbox" className="custom-checkbox" />
               </th>
               <th className="py-2 text-start px-4 border-b">Invoice nr.</th>
               <th className="py-2 text-start px-4 border-b">GL Code</th>
-
               <th className="py-2 text-start px-4 border-b">PO Number</th>
               <th className="py-2 text-start px-4 border-b">Date</th>
               <th className="py-2 text-start px-4 border-b">Final Amount</th>
               <th className="py-2 text-start px-4 border-b">Vendor</th>
+              <th className="py-2 text-start px-4 border-b">Actions</th>
             </tr>
           </thead>
           <tbody className="w-full">
@@ -335,28 +364,16 @@ const AdminInvoiceTable: React.FC = () => {
                 <td className="py-2 text-start px-4 border-b">
                   <input type="checkbox" className="custom-checkbox" />
                 </td>
-                <td className="py-2 px-4 text-start border-b">
-                  {invoice.number}
-                </td>
-                <td className="py-2 px-4 text-start border-b">
-                  {invoice.glCode}
-                </td>
-                <td className="py-2 px-4 text-start border-b">
-                  {invoice.poId}
-                </td>
-                <td className="py-2 px-4 text-start border-b">
-                  {invoice.date}
-                </td>
-                <td className="py-2 px-4 text-start border-b">
-                  {invoice.finalAmount}
-                </td>
-                <td className="py-2 px-4 text-start border-b">
-                  {invoice.vendor}
-                </td>
-                <td className="py-2 px-4 flex text-start border-b">
+                <td className="py-2 px-4 text-start border-b">{invoice.number}</td>
+                <td className="py-2 px-4 text-start border-b">{invoice.glCode}</td>
+                <td className="py-2 px-4 text-start border-b">{invoice.poId}</td>
+                <td className="py-2 px-4 text-start border-b">{invoice.date}</td>
+                <td className="py-2 px-4 text-start border-b">{invoice.finalAmount}</td>
+                <td className="py-2 px-4 text-start border-b">{invoice.vendor}</td>
+                <td className="py-2 px-4 border-b">
                   <button
                     onClick={() => handleEditClick(invoice)}
-                    className="bg-red-400 text-white px-3 py-1 rounded mr-2 flex items-center"
+                    className="bg-red-400 text-white px-3 py-1 rounded flex items-center"
                   >
                     Edit
                     <FaEdit className="ml-1" />
@@ -366,31 +383,33 @@ const AdminInvoiceTable: React.FC = () => {
             ))}
           </tbody>
         </table>
-        {/*Modal*/}
+        {/* Modal */}
         <Modal
           isOpen={isModalOpen}
           onRequestClose={handleCloseModal}
           style={customStyles}
           contentLabel="Invoice Modal"
         >
-          <h2 className="text-2xl font-bold mb-4">Add New Invoice</h2>
+          <h2 className="text-2xl font-bold mb-4">Edit Invoice</h2>
           <form onSubmit={handleSave}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-36 gap-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
               <div>
+                <label className="text-gray-500">Invoice Number</label>
                 <input
                   type="text"
                   name="invoiceNumber"
                   placeholder="Invoice number"
-                  className="w-full border rounded p-2 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.invoiceNumber}
                   onChange={handleChange}
                   required
                 />
               </div>
               <div>
+                <label className="text-gray-500">GL Code</label>
                 <select
                   name="glCode"
-                  className="w-full border rounded p-2 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.glCode}
                   onChange={handleChange}
                   required
@@ -404,19 +423,21 @@ const AdminInvoiceTable: React.FC = () => {
                 </select>
               </div>
               <div>
+                <label className="text-gray-500">Invoice Date</label>
                 <input
                   type="date"
                   name="invoiceDate"
-                  className="w-full border rounded p-2 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.invoiceDate}
                   onChange={handleChange}
                   required
                 />
               </div>
               <div>
+                <label className="text-gray-500">Cost Center</label>
                 <select
                   name="costCenter"
-                  className="w-full border rounded p-2 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.costCenter}
                   onChange={handleChange}
                   required
@@ -430,9 +451,10 @@ const AdminInvoiceTable: React.FC = () => {
                 </select>
               </div>
               <div>
+                <label className="text-gray-500">PO Number</label>
                 <select
                   name="poNumber"
-                  className="w-full border rounded p-2 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.poNumber}
                   onChange={handleChange}
                   required
@@ -447,9 +469,10 @@ const AdminInvoiceTable: React.FC = () => {
                 </select>
               </div>
               <div>
+                <label className="text-gray-500">Payment Type</label>
                 <select
                   name="paymentType"
-                  className="w-full border rounded p-2 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.paymentType}
                   onChange={handleChange}
                   required
@@ -464,12 +487,12 @@ const AdminInvoiceTable: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-12 grid grid-cols-2 md:grid-cols-6 gap-4">
-              <div className="col-span-2">
-                <label className="text-gray-500">Company name</label>
+            <div className="  grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+              <div>
+                <label className="text-gray-500">Company Name</label>
                 <select
                   name="companyName"
-                  className="w-full border rounded p-2 mt-1 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.companyName}
                   onChange={handleChange}
                   required
@@ -487,7 +510,7 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="number"
                   name="baseAmount"
-                  className="w-full border rounded p-2 mt-1 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.baseAmount}
                   onChange={handleChange}
                   required
@@ -497,7 +520,7 @@ const AdminInvoiceTable: React.FC = () => {
                 <label className="text-gray-500">IGST</label>
                 <select
                   name="igst"
-                  className="w-full border rounded p-2 mt-1 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.igst}
                   onChange={handleChange}
                   required
@@ -514,7 +537,7 @@ const AdminInvoiceTable: React.FC = () => {
                 <label className="text-gray-500">SGST</label>
                 <select
                   name="sgst"
-                  className="w-full border rounded p-2 mt-1 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.sgst}
                   onChange={handleChange}
                   required
@@ -531,7 +554,7 @@ const AdminInvoiceTable: React.FC = () => {
                 <label className="text-gray-500">CGST</label>
                 <select
                   name="cgst"
-                  className="w-full border rounded p-2 mt-1 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.cgst}
                   onChange={handleChange}
                   required
@@ -549,94 +572,95 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="number"
                   name="total"
-                  className="w-full border rounded p-2 mt-1 bg-white"
+                  className="w-full border rounded p-2 bg-white "
                   value={formData.total}
                   onChange={handleChange}
                   required
                 />
               </div>
             </div>
-            <div>
-              <label className="text-gray-500">Status</label>
-              <select
-                name="status"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.status}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select Payment Type</option>
-                {["PENDING", "APPROVED", "REJECTED"].map((type, index) => (
-                  <option key={index} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+            <div className="flex justify-between gap-6">
+              <div className="flex-1">
+                <label className="text-gray-500">Status</label>
+                <select
+                  name="status"
+                  className="w-full border rounded p-2 bg-white "
+                  value={formData.status}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Status</option>
+                  {["PENDING", "APPROVED", "REJECTED"].map((type, index) => (
+                    <option key={index} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="text-gray-500">UTR Number</label>
+                <input
+                  type="text"
+                  name="utrNo"
+                  placeholder="UTR number"
+                  className="w-full border rounded p-2 bg-white "
+                  value={formData.utrNo}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
             </div>
-            <div>
-              <input
-                type="text"
-                name="UtrNo"
-                placeholder="UTR number"
-                className="w-full border rounded p-2 bg-white"
-                value={formData.UtrNo}
-                onChange={handleChange}
-                required
-              />
-            </div>
+            <div className="flex justify-between gap-6">
+              <div className="flex-1">
+                <label className="text-gray-500">Description</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  className="w-full border rounded p-2 bg-white "
 
-            <div className="flex flex-col max-w-xl w-full">
-              <label className="text-gray-500">Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                className="bg-transparent border border-gray-300 p-2 rounded-lg mt-1"
-              />
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-gray-500">Narration</label>
+                <textarea
+                  name="narration"
+                  value={formData.narration}
+                  onChange={handleChange}
+                  className="w-full border rounded p-2 bg-white "
+
+                />
+              </div>
             </div>
-            <div className="flex flex-col max-w-xl w-full">
-              <label className="text-gray-500">Narration</label>
-              <textarea
-                name="narration"
-                value={formData.narration}
-                onChange={handleChange}
-                className="bg-transparent border border-gray-300 p-2 rounded-lg mt-1"
-              />
-            </div>
-            <div>
+            <div className="mt-6 flex gap-2">
               <button
-                onClick={() =>
-                  handleDownloadFile(formData.invoiceId, "receipts")
-                }
-                className="bg-blue-500 text-white px-3 py-1 rounded mr-2 flex items-center"
+                onClick={() => handleDownloadFile(formData.invoiceId, "receipts")}
+                className="bg-blue-500 text-white px-3 py-1 rounded flex items-center"
               >
                 Receipts
                 <FaDownload className="ml-1" />
               </button>
-
               <button
-                onClick={() =>
-                  handleDownloadFile(formData.invoiceId, "approvals")
-                }
+                onClick={() => handleDownloadFile(formData.invoiceId, "approvals")}
                 className="bg-green-500 text-white px-3 py-1 rounded flex items-center"
               >
                 Approvals
                 <FaDownload className="ml-1" />
               </button>
             </div>
-
-            <div className="mt-4 flex justify-between">
+            <div className=" flex justify-end">
               <button
                 type="submit"
-                className="bg-[#D7E6C5] text-black p-2 rounded"
+                className="bg-[#D7E6C5] text-black px-4 py-2 rounded"
               >
-                Save invoice
+                Save Invoice
               </button>
             </div>
           </form>
         </Modal>
       </div>
     </div>
+
   );
 };
 

@@ -79,6 +79,7 @@ const InvoiceTable: React.FC = () => {
 
   const baseUrl = 'https://jhipl.grobird.in';
   const user_id = localStorage.getItem("userId");
+ 
 
   useEffect(() => {
     const fetchDropdownData = async () => {
@@ -141,6 +142,7 @@ const InvoiceTable: React.FC = () => {
 
   const fetchInvoices = async () => {
     try {
+      console.log(user_id)
       const response = await axios.get(`${baseUrl}/invoices/user/${user_id}`);
       if (response.status !== 200) {
         throw new Error('Failed to fetch invoices');

@@ -15,6 +15,7 @@ interface Reimbursement {
     remarks: string;
     utrNo: string;
     userId: string
+    description: string
 }
 
 const customStyles = {
@@ -50,6 +51,7 @@ const ReimbursementTable: React.FC = () => {
         advance: '',
         receipt: null,
         approvalDoc: null,
+        description: ''
     });
 
     // Dropdown data states
@@ -58,7 +60,8 @@ const ReimbursementTable: React.FC = () => {
     const [glCodes, setGlCodes] = useState<string[]>([]);
 
     const baseUrl = 'https://jhipl.grobird.in';
-    const user_id =  localStorage.getItem("userId") || '';
+    const user_id = localStorage.getItem("userId") || '';
+    console.log()
 
 
     // Fetch data from APIs
@@ -118,7 +121,7 @@ const ReimbursementTable: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const { nameOfEmployee, glCode, costCenter, date, amount, advance, receipt, approvalDoc } = formData;
+        const { nameOfEmployee, glCode, costCenter, date, amount, advance, receipt, approvalDoc, description } = formData;
 
         if (!nameOfEmployee || !glCode || !costCenter || !date || !amount) {
             alert('Please fill in all required fields.');
@@ -134,6 +137,7 @@ const ReimbursementTable: React.FC = () => {
         form.append('amount', amount);
         form.append('advance', advance);
         form.append('userId', user_id)
+        form.append('description', description)
         if (receipt) form.append('receipts', receipt);
         if (approvalDoc) form.append('approvals', approvalDoc);
 
@@ -155,7 +159,8 @@ const ReimbursementTable: React.FC = () => {
                 status: 'Pending',
                 remarks: '',
                 utrNo: '',
-                userId: user_id
+                userId: user_id,
+                description
             }]);
             closeModal();
         } catch (error) {
@@ -299,15 +304,6 @@ const ReimbursementTable: React.FC = () => {
                                 onChange={handleChange}
                                 required
                             />
-                            <input
-                                type="number"
-                                name="advance"
-                                placeholder="Advance"
-                                className="w-full sm:w-1/2 border rounded p-2 bg-white"
-                                value={formData.advance}
-                                onChange={handleChange}
-                                required
-                            />
                         </div>
                         <input
                             type="file"
@@ -320,6 +316,15 @@ const ReimbursementTable: React.FC = () => {
                             name="approvalDoc"
                             className="w-full border rounded p-2 bg-white"
                             onChange={handleChange}
+                        />
+                    </div>
+                    <div className='flex flex-col max-w-xl w-full'>
+                        <label className="text-gray-500 ">Description</label>
+                        <textarea
+                            name='description'
+                            value={formData.description}
+                            onChange={handleChange}
+                            className='bg-transparent border border-gray-300 p-2 rounded-lg '
                         />
                     </div>
                     <div className="flex justify-end space-x-4 mt-6">

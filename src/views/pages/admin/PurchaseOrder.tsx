@@ -296,7 +296,7 @@ const PurchaseOrder: React.FC = () => {
 
   return (
     <>
-      <div className="overflow-x-auto h-[50vh] overflow-y-scroll noscroll-bar scroll-smooth">
+      <div className="overflow-x-auto border-4 h-[50vh] overflow-y-scroll noscroll-bar scroll-smooth">
         <div>
           <h1 className="text-3xl text-black font-semibold sticky top-0 backdrop-blur-xl p-3">
             PO Requests
