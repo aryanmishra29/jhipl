@@ -28,6 +28,8 @@ const customStyles = {
     padding: "40px",
     width: "1000px",
     maxWidth: "90%",
+    maxHeight: "90vh",
+    overflow: "auto",
   },
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.5)",

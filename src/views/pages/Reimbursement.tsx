@@ -19,24 +19,26 @@ interface Reimbursement {
 }
 
 const customStyles = {
-    content: {
-        top: '50%',
-        left: '50%',
-        right: 'auto',
-        bottom: 'auto',
-        marginRight: '-50%',
-        transform: 'translate(-50%, -50%)',
-        backgroundColor: '#ffffff',
-        color: '#000000',
-        borderRadius: '8px',
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-        padding: '20px',
-        width: '600px',
-        maxWidth: '90%',
-    },
-    overlay: {
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
+  content: {
+    top: "50%",
+    left: "50%",
+    right: "auto",
+    bottom: "auto",
+    marginRight: "-50%",
+    transform: "translate(-50%, -50%)",
+    backgroundColor: "#ffffff",
+    color: "#000000",
+    borderRadius: "8px",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+    padding: "20px",
+    width: "600px",
+    maxWidth: "90%",
+    maxHeight: "90vh",
+    overflow: "auto",
+  },
+  overlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
 };
 
 const ReimbursementTable: React.FC = () => {

@@ -12,6 +12,7 @@ interface Invoice {
   costCenter: string;
   finalAmount: number;
   status: string;
+  utrNo: string;
 }
 
 // Define the PO details interface
@@ -26,22 +27,24 @@ interface PoDetails {
 
 const customStyles = {
   content: {
-    top: '50%',
-    left: '50%',
-    right: 'auto',
-    bottom: 'auto',
-    marginRight: '-50%',
-    transform: 'translate(-50%, -50%)',
-    backgroundColor: '#ffffff',
-    color: '#000000',
-    borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    padding: '40px',
-    width: '1000px',
-    maxWidth: '90%',
+    top: "50%",
+    left: "50%",
+    right: "auto",
+    bottom: "auto",
+    marginRight: "-50%",
+    transform: "translate(-50%, -50%)",
+    backgroundColor: "#ffffff",
+    color: "#000000",
+    borderRadius: "8px",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+    padding: "40px",
+    width: "1000px",
+    maxWidth: "90%",
+    maxHeight: "90vh",
+    overflow: "auto",
   },
   overlay: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
 };
 
@@ -155,6 +158,7 @@ const InvoiceTable: React.FC = () => {
         costCenter: invoice.costCenter,
         finalAmount: invoice.finalAmount,
         status: invoice.status,
+        utrNo : invoice.utrNo
       }));
       setInvoices(data);
     } catch (error) {
@@ -315,6 +319,7 @@ const InvoiceTable: React.FC = () => {
               <th className="py-2 text-start px-4 border-b">Date</th>
               <th className="py-2 text-start px-4 border-b">Cost Center</th>
               <th className="py-2 text-start px-4 border-b">Amount</th>
+              <th className="py-2 text-start px-4 border-b">UTR No.</th>
               <th className="py-2 text-start px-4 border-b">Status</th>
             </tr>
           </thead>
@@ -336,18 +341,18 @@ const InvoiceTable: React.FC = () => {
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.finalAmount.toFixed(2)}
                 </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.utrNo}
+                </td>
                 <td className="py-2 px-4 text-center border-b">
                   <div
-                    className={`w-fit rounded-full px-2 ${invoice.status === "APPROVED"
-                      ? "bg-[#636C59] text-white"
-                      : "bg-[#D7E6C5]"
-                      }`}
+                    className={`w-fit rounded-full px-2 ${
+                      invoice.status === "APPROVED"
+                        ? "bg-[#636C59] text-white"
+                        : "bg-[#D7E6C5]"
+                    }`}
                   >
-                    {invoice.status === "APPROVED" ? (
-                      <FaCheck />
-                    ) : (
-                      <FaTimes />
-                    )}
+                    {invoice.status === "APPROVED" ? <FaCheck /> : <FaTimes />}
                   </div>
                 </td>
               </tr>
@@ -435,13 +440,14 @@ const InvoiceTable: React.FC = () => {
               >
                 <option value="">Select PO Number</option>
                 <option value="n/a">N/A</option>
-                {(pos?.length > 0 ? pos : ["PO001", "PO002", "PO003"]).map((po, index) => (
-                  <option key={index} value={po}>
-                    {po}
-                  </option>
-                ))}
+                {(pos?.length > 0 ? pos : ["PO001", "PO002", "PO003"]).map(
+                  (po, index) => (
+                    <option key={index} value={po}>
+                      {po}
+                    </option>
+                  )
+                )}
               </select>
-
             </div>
             <div>
               <select
@@ -452,8 +458,7 @@ const InvoiceTable: React.FC = () => {
                 required
               >
                 <option value="">Select Payment Type</option>
-                {(["HALF", "FULL", "PARTIAL"]
-                ).map((center, index) => (
+                {["HALF", "FULL", "PARTIAL"].map((center, index) => (
                   <option key={index} value={center}>
                     {center}
                   </option>
@@ -565,13 +570,13 @@ const InvoiceTable: React.FC = () => {
               />
             </div>
           </div>
-          <div className='flex flex-col max-w-xl w-full'>
+          <div className="flex flex-col max-w-xl w-full">
             <label className="text-gray-500 ">Description</label>
             <textarea
-              name='description'
+              name="description"
               value={formData.description}
               onChange={handleChange}
-              className='bg-transparent border border-gray-300 p-2 rounded-lg '
+              className="bg-transparent border border-gray-300 p-2 rounded-lg "
             />
           </div>
           <div className="flex gap-4">
