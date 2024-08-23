@@ -334,7 +334,7 @@ const InvoiceTable: React.FC = () => {
                   {invoice.costCenter}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
-                  €{invoice.finalAmount.toFixed(2)}
+                  {invoice.finalAmount.toFixed(2)}
                 </td>
                 <td className="py-2 px-4 text-center border-b">
                   <div

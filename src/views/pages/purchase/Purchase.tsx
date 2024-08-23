@@ -151,7 +151,7 @@ const Purchase: React.FC = () => {
                                 <td className="py-2 px-4 text-start border-b">{po.poNumber}</td>
                                 <td className="py-2 px-4 text-start border-b">{po.date}</td>
                                 <td className="py-2 px-4 text-start border-b">{po.remainingAmount}</td>
-                                <td className="py-2 px-4 text-start border-b">€{po.finalAmount.toFixed(4)}</td>
+                                <td className="py-2 px-4 text-start border-b">{po.finalAmount.toFixed(4)}</td>
                                 <td className="py-2 px-4 text-start border-b">{po.paymentType}</td>
 
                             </tr>

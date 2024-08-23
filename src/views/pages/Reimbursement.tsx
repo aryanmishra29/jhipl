@@ -224,7 +224,7 @@ const ReimbursementTable: React.FC = () => {
                                         <input type="checkbox" className="custom-checkbox" />
                                     </td>
                                     <td className="py-2 px-4 text-start border-b">{reimbursement.date}</td>
-                                    <td className={`py-2 px-4 text-start border-b ${amountColor}`}>{`€${reimbursement.amount.toFixed(2)}`}</td>
+                                    <td className={`py-2 px-4 text-start border-b ${amountColor}`}>{`${reimbursement.amount.toFixed(2)}`}</td>
                                     <td className="py-2 px-4 text-start border-b">{reimbursement.utrNo}</td>
                                     <td className="py-2 px-4 text-start border-b">{reimbursement.costCenter}</td>
                                     <td className="py-2 px-4 text-start border-b">{reimbursement.name}</td>

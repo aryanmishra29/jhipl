@@ -631,7 +631,7 @@ const PurchaseOrder: React.FC = () => {
                     {po.remainingAmount}
                   </td>
                   <td className="py-2 px-4 text-start border-b">
-                    €{po.finalAmount.toFixed(2)}
+                    {po.finalAmount.toFixed(2)}
                   </td>
                   <td className="py-2 px-4 text-start border-b">
                     <button
