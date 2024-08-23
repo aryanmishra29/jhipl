@@ -4,7 +4,6 @@ import * as XLSX from "xlsx";
 import Modal from "react-modal";
 import axios from "axios";
 
-
 interface Invoice {
   invoiceId: string;
   number: string;
@@ -19,10 +18,26 @@ interface Invoice {
   sgst: string;
   cgst: string;
   igst: string;
+  withholdingTax: string;
   utrNo: string;
   status: string;
   description: string;
   narration: string;
+}
+
+interface ExcelItem {
+  voucherType: string;
+  voucherNumber: string;
+  voucherDate: string;
+  invoiceNo: string;
+  invoiceDate: string;
+  ledgerHead: string;
+  drcr: string;
+  amount: number;
+  costCenter: string;
+  description: string;
+  narration: string;
+  [key: string]: string | number;
 }
 const customStyles = {
   content: {
@@ -48,7 +63,7 @@ const customStyles = {
 const AdminInvoiceTable: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const baseUrl = "https://jhipl.grobird.in";
-
+  // const baseUrl = "http://localhost:8080";
   useEffect(() => {
     fetchInvoices();
   }, []);
@@ -69,6 +84,7 @@ const AdminInvoiceTable: React.FC = () => {
     sgst: "",
     cgst: "",
     total: "",
+    withholdingTax: "",
     description: "",
     narration: "",
     status: "",
@@ -82,10 +98,9 @@ const AdminInvoiceTable: React.FC = () => {
   const [cgsts, setCgsts] = useState<string[]>([]);
   const [poDetails, setPoDetails] = useState<Map<string, string>>(new Map());
   const [idToPo, setIdToPo] = useState<Map<string, string>>(new Map());
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-
-
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [withholdingTaxes, setWithholdingTaxes] = useState<string[]>([]);
   const [sgsts, setSgsts] = useState<string[]>([]);
   const [igsts, setIgsts] = useState<string[]>([]);
 
@@ -100,6 +115,9 @@ const AdminInvoiceTable: React.FC = () => {
         const sgstResponse = await axios.get(`${baseUrl}/info/sgst`);
         const igstResponse = await axios.get(`${baseUrl}/info/igst`);
         const cgstResponse = await axios.get(`${baseUrl}/info/cgst`);
+        const withholdingTaxResponse = await axios.get(
+          `${baseUrl}/info/withholding-taxes`
+        );
         const poResponse = await axios.get(`${baseUrl}/purchase-orders`);
         sgstResponse.data.push("0");
         igstResponse.data.push("0");
@@ -118,6 +136,11 @@ const AdminInvoiceTable: React.FC = () => {
         setSgsts(Array.isArray(sgstResponse.data) ? sgstResponse.data : []);
         setIgsts(Array.isArray(igstResponse.data) ? igstResponse.data : []);
         setCgsts(Array.isArray(cgstResponse.data) ? cgstResponse.data : []);
+        setWithholdingTaxes(
+          Array.isArray(withholdingTaxResponse.data)
+            ? withholdingTaxResponse.data
+            : []
+        );
         setPos(
           Array.isArray(poResponse.data)
             ? poResponse.data.map((po: any) => po.poNumber)
@@ -142,6 +165,7 @@ const AdminInvoiceTable: React.FC = () => {
         setCgsts([]);
         setSgsts([]);
         setPos([]);
+        setWithholdingTaxes([]);
       }
     };
     fetchDropdownData();
@@ -162,6 +186,7 @@ const AdminInvoiceTable: React.FC = () => {
       igst: invoice.igst,
       sgst: invoice.sgst,
       cgst: invoice.cgst,
+      withholdingTax: invoice.withholdingTax,
       total: invoice.finalAmount.toString(),
       description: invoice.description,
       narration: invoice.narration,
@@ -189,8 +214,11 @@ const AdminInvoiceTable: React.FC = () => {
     }
   };
 
-
   const handleDownloadExcel = async () => {
+    if (!startDate || !endDate) {
+      alert("Please select both start and end dates.");
+      return;
+    }
     try {
       const response = await fetch(
         `${baseUrl}/invoices/excel?startDate=${startDate}&endDate=${endDate}`
@@ -200,8 +228,34 @@ const AdminInvoiceTable: React.FC = () => {
         throw new Error("Network response was not ok");
       }
       const data = await response.json();
-      console.log(data)
-      const worksheet = XLSX.utils.json_to_sheet(data);
+      console.log(data);
+      const keyOrder : (keyof ExcelItem)[] = [
+        "voucherType",
+        "voucherNumber",
+        "voucherDate",
+        "invoiceNo",
+        "invoiceDate",
+        "ledgerHead",
+        "drcr",
+        "amount",
+        "costCenter",
+        "description",
+        "narration",
+      ];
+
+      // Create a new array with reordered keys
+      const reorderedData = data.map((item: ExcelItem) => {
+        const reorderedItem: ExcelItem = {} as ExcelItem;
+        keyOrder.forEach((key) => {
+          if (key in item) {
+            reorderedItem[key] = item[key];
+          }
+        });
+        return reorderedItem;
+      });
+
+      // Create the worksheet using the reordered data
+      const worksheet = XLSX.utils.json_to_sheet(reorderedData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Invoices");
       XLSX.writeFile(workbook, "Invoices.xlsx");
@@ -214,7 +268,7 @@ const AdminInvoiceTable: React.FC = () => {
     invoiceId: string,
     fileType: "receipts" | "approvals"
   ) => {
-    console.log(invoiceId)
+    console.log(invoiceId);
     try {
       const response = await fetch(
         `${baseUrl}/invoices/${invoiceId}/${fileType}`
@@ -244,7 +298,7 @@ const AdminInvoiceTable: React.FC = () => {
       ...prev,
       [name]: files ? files[0] : value,
     }));
-  }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -263,6 +317,7 @@ const AdminInvoiceTable: React.FC = () => {
         sgst: formData.sgst,
         cgst: formData.cgst,
         igst: formData.igst,
+        withholdingTax: formData.withholdingTax,
         utrNo: formData.utrNo,
         status: formData.status,
         description: formData.description,
@@ -270,7 +325,7 @@ const AdminInvoiceTable: React.FC = () => {
       };
 
       try {
-        const response = await fetch(`https://jhipl.grobird.in/invoices/update`, {
+        const response = await fetch(`${baseUrl}/invoices/update`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -278,16 +333,14 @@ const AdminInvoiceTable: React.FC = () => {
           body: JSON.stringify(updateRequest),
         });
 
-
         if (!response.ok) {
           throw new Error("Failed to update invoice");
         }
-        console.log(response)
-
+        console.log(response);
 
         setIsModalOpen(false);
         setSelectedInvoice(null);
-        location.reload()
+        location.reload();
       } catch (error) {
         console.error("Error updating invoice:", error);
       }
@@ -302,7 +355,9 @@ const AdminInvoiceTable: React.FC = () => {
           <div className="flex justify-between items-center">
             <div className="flex  items-center gap-6">
               <div className="flex space-x-2 items-center">
-                <label htmlFor="startDate" className="text-black font-semibold">Start Date:</label>
+                <label htmlFor="startDate" className="text-black font-semibold">
+                  Start Date:
+                </label>
                 <input
                   id="startDate"
                   type="date"
@@ -312,7 +367,9 @@ const AdminInvoiceTable: React.FC = () => {
                 />
               </div>
               <div className="flex space-x-2 items-center">
-                <label htmlFor="endDate" className="text-black font-semibold">End Date:</label>
+                <label htmlFor="endDate" className="text-black font-semibold">
+                  End Date:
+                </label>
                 <input
                   id="endDate"
                   type="date"
@@ -321,11 +378,13 @@ const AdminInvoiceTable: React.FC = () => {
                   className="border bg-transparent text-black rounded p-2"
                 />
               </div>
-              <button onClick={handleDownloadExcel} className="bg-[#D7E6C5] text-black font-bold px-6 py-1.5 rounded-xl flex items-center">
+              <button
+                onClick={handleDownloadExcel}
+                className="bg-[#D7E6C5] text-black font-bold px-6 py-1.5 rounded-xl flex items-center"
+              >
                 Download as Excel
               </button>
             </div>
-
           </div>
           <div className="flex gap-2">
             <div className="w-auto">
@@ -364,12 +423,24 @@ const AdminInvoiceTable: React.FC = () => {
                 <td className="py-2 text-start px-4 border-b">
                   <input type="checkbox" className="custom-checkbox" />
                 </td>
-                <td className="py-2 px-4 text-start border-b">{invoice.number}</td>
-                <td className="py-2 px-4 text-start border-b">{invoice.glCode}</td>
-                <td className="py-2 px-4 text-start border-b">{invoice.poId}</td>
-                <td className="py-2 px-4 text-start border-b">{invoice.date}</td>
-                <td className="py-2 px-4 text-start border-b">{invoice.finalAmount}</td>
-                <td className="py-2 px-4 text-start border-b">{invoice.vendor}</td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.number}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.glCode}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.poId}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.date}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.finalAmount}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.vendor}
+                </td>
                 <td className="py-2 px-4 border-b">
                   <button
                     onClick={() => handleEditClick(invoice)}
@@ -568,6 +639,23 @@ const AdminInvoiceTable: React.FC = () => {
                 </select>
               </div>
               <div>
+                <label className="text-gray-500">Withholding Tax</label>
+                <select
+                  name="withholdingTax"
+                  className="w-full border rounded p-2 bg-white "
+                  value={formData.withholdingTax}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Withholding Tax</option>
+                  {withholdingTaxes.map((gst, index) => (
+                    <option key={index} value={gst}>
+                      {gst}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="text-gray-500">Total</label>
                 <input
                   type="number"
@@ -618,7 +706,6 @@ const AdminInvoiceTable: React.FC = () => {
                   value={formData.description}
                   onChange={handleChange}
                   className="w-full border rounded p-2 bg-white "
-
                 />
               </div>
               <div className="flex-1">
@@ -628,20 +715,23 @@ const AdminInvoiceTable: React.FC = () => {
                   value={formData.narration}
                   onChange={handleChange}
                   className="w-full border rounded p-2 bg-white "
-
                 />
               </div>
             </div>
             <div className="mt-6 flex gap-2">
               <button
-                onClick={() => handleDownloadFile(formData.invoiceId, "receipts")}
+                onClick={() =>
+                  handleDownloadFile(formData.invoiceId, "receipts")
+                }
                 className="bg-blue-500 text-white px-3 py-1 rounded flex items-center"
               >
                 Receipts
                 <FaDownload className="ml-1" />
               </button>
               <button
-                onClick={() => handleDownloadFile(formData.invoiceId, "approvals")}
+                onClick={() =>
+                  handleDownloadFile(formData.invoiceId, "approvals")
+                }
                 className="bg-green-500 text-white px-3 py-1 rounded flex items-center"
               >
                 Approvals
@@ -660,7 +750,6 @@ const AdminInvoiceTable: React.FC = () => {
         </Modal>
       </div>
     </div>
-
   );
 };
 

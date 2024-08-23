@@ -19,6 +19,20 @@ interface Reimbursement {
     description: string;
     narration: string;
 }
+interface ExcelItem {
+  voucherType: string;
+  voucherNumber: string;
+  voucherDate: string;
+  invoiceNo: string;
+  invoiceDate: string;
+  ledgerHead: string;
+  drcr: string;
+  amount: number;
+  costCenter: string;
+  description: string;
+  narration: string;
+  [key: string]: string | number;
+}
 
 const customStyles = {
     content: {
@@ -145,10 +159,37 @@ const AdminReimbursementTable: React.FC = () => {
 
             const data = await response.json();
             console.log(data)
-            const worksheet = XLSX.utils.json_to_sheet(data);
+            const keyOrder: (keyof ExcelItem)[] = [
+              "voucherType",
+              "voucherNumber",
+              "voucherDate",
+              "invoiceNo",
+              "invoiceDate",
+              "ledgerHead",
+              "drcr",
+              "amount",
+              "costCenter",
+              "description",
+              "narration",
+            ];
+
+            // Create a new array with reordered keys
+            const reorderedData = data.map((item: ExcelItem) => {
+              const reorderedItem: ExcelItem = {} as ExcelItem;
+              keyOrder.forEach((key) => {
+                if (key in item) {
+                  reorderedItem[key] = item[key];
+                }
+              });
+              return reorderedItem;
+            });
+
+            // Create the worksheet using the reordered data
+            const worksheet = XLSX.utils.json_to_sheet(reorderedData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Reimbursements");
-            XLSX.writeFile(workbook, `Reimbursements_${startDate}_${endDate}.xlsx`);
+            XLSX.writeFile(workbook, "Reimbursements.xlsx");
+        
         } catch (error) {
             console.error("Error fetching or exporting data:", error);
         }

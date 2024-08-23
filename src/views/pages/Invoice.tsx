@@ -78,6 +78,7 @@ const InvoiceTable: React.FC = () => {
   const [igsts, setIgsts] = useState<string[]>([]);
 
   const baseUrl = 'https://jhipl.grobird.in';
+  // const baseUrl = 'http://localhost:8080';
   const user_id = localStorage.getItem("userId");
  
 
