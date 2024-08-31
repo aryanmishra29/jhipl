@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { FaChevronDown, FaPlus, FaFilter, FaCheck, FaTimes } from 'react-icons/fa';
-import Modal from 'react-modal';
-import axios from 'axios';
-import parseTax from '../../utils/parseTax';
+import React, { useState, useEffect } from "react";
+import {
+  FaChevronDown,
+  FaPlus,
+  FaFilter,
+  FaCheck,
+  FaTimes,
+} from "react-icons/fa";
+import Modal from "react-modal";
+import axios from "axios";
+import parseTax from "../../utils/parseTax";
 
 // Define the Invoice interface
 interface Invoice {
@@ -10,6 +16,7 @@ interface Invoice {
   number: string;
   date: string;
   costCenter: string;
+  gst: string;
   finalAmount: number;
   status: string;
   utrNo: string;
@@ -17,12 +24,17 @@ interface Invoice {
 
 // Define the PO details interface
 interface PoDetails {
+  vendor: string;
   paymentType: string;
   sgst: string;
+  sgstAmount: number;
   igst: string;
+  igstAmount: number;
   cgst: string;
+  cgstAmount: number;
   poId: string;
-  baseAmount: number
+  baseAmount: number;
+  finalAmount: number;
 }
 
 const customStyles = {
@@ -52,25 +64,28 @@ const InvoiceTable: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    invoiceNumber: '',
-    invoiceDate: '',
-    poNumber: '',
-    currency: '',
-    companyName: '',
-    baseAmount: '',
-    paymentType: '',
-    igst: '0',
-    sgst: '0',
-    cgst: '0',
-    total: '',
-    glCode: '',
-    costCenter: '',
+    invoiceNumber: "",
+    invoiceDate: "",
+    poNumber: "",
+    currency: "",
+    companyName: "",
+    baseAmount: "",
+    paymentType: "",
+    igst: "0",
+    igstAmount: "0",
+    sgst: "0",
+    sgstAmount: "0",
+    cgst: "0",
+    cgstAmount: "0",
+    total: "",
+    glCode: "",
+    costCenter: "",
     receipt: null as File | null,
     approvalDoc: null as File | null,
-    description: ''
+    description: "",
   });
   const [poDetails, setPoDetails] = useState<Map<string, PoDetails>>(new Map());
-  const [currentPoId, setCurrentPoId] = useState<string>('')
+  const [currentPoId, setCurrentPoId] = useState<string>("");
   const [costCenters, setCostCenters] = useState<string[]>([]);
   const [vendors, setVendors] = useState<string[]>([]);
   const [glCodes, setGlCodes] = useState<string[]>([]);
@@ -80,43 +95,61 @@ const InvoiceTable: React.FC = () => {
   const [sgsts, setSgsts] = useState<string[]>([]);
   const [igsts, setIgsts] = useState<string[]>([]);
 
-  const baseUrl = 'https://jhipl.grobird.in';
+  const baseUrl = "https://jhipl.grobird.in";
   // const baseUrl = 'http://localhost:8080';
   const user_id = localStorage.getItem("userId");
- 
 
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
-        const costCentersResponse = await axios.get(`${baseUrl}/info/cost-centers`);
+        const costCentersResponse = await axios.get(
+          `${baseUrl}/info/cost-centers`
+        );
         const vendorsResponse = await axios.get(`${baseUrl}/info/vendors`);
         const glCodesResponse = await axios.get(`${baseUrl}/info/gl-codes`);
         const poResponse = await axios.get(`${baseUrl}/purchase-orders`);
         const sgstResponse = await axios.get(`${baseUrl}/info/sgst`);
-        const igstResponse = await axios.get(`${baseUrl}/info/igst`)
-        const cgstResponse = await axios.get(`${baseUrl}/info/cgst`)
-        sgstResponse.data.push('0')
-        igstResponse.data.push('0')
-        cgstResponse.data.push('0')
-        setCostCenters(Array.isArray(costCentersResponse.data) ? costCentersResponse.data : []);
-        setVendors(Array.isArray(vendorsResponse.data) ? vendorsResponse.data : []);
-        setGlCodes(Array.isArray(glCodesResponse.data) ? glCodesResponse.data : []);
+        const igstResponse = await axios.get(`${baseUrl}/info/igst`);
+        const cgstResponse = await axios.get(`${baseUrl}/info/cgst`);
+        sgstResponse.data.push("0");
+        igstResponse.data.push("0");
+        cgstResponse.data.push("0");
+        setCostCenters(
+          Array.isArray(costCentersResponse.data)
+            ? costCentersResponse.data
+            : []
+        );
+        setVendors(
+          Array.isArray(vendorsResponse.data) ? vendorsResponse.data : []
+        );
+        setGlCodes(
+          Array.isArray(glCodesResponse.data) ? glCodesResponse.data : []
+        );
         setSgsts(Array.isArray(sgstResponse.data) ? sgstResponse.data : []);
         setIgsts(Array.isArray(igstResponse.data) ? igstResponse.data : []);
         setCgsts(Array.isArray(cgstResponse.data) ? cgstResponse.data : []);
 
-        setPos(Array.isArray(poResponse.data) ? poResponse.data.map((po: any) => po.poNumber) : []);
+        setPos(
+          Array.isArray(poResponse.data)
+            ? poResponse.data.map((po: any) => po.poNumber)
+            : []
+        );
 
         // Update PO details in the state
         const poDetailsMap = new Map<string, PoDetails>();
         poResponse.data.forEach((po: any) => {
           poDetailsMap.set(po.poNumber, {
+            vendor: po.vendor,
             paymentType: po.paymentType,
             sgst: po.sgst,
+            sgstAmount: po.sgstAmount,
             igst: po.igst,
+            igstAmount: po.igstAmount,
             cgst: po.cgst,
+            cgstAmount: po.cgstAmount,
             poId: po.poId,
             baseAmount: po.baseAmount,
+            finalAmount: po.finalAmount,
           });
         });
         setPoDetails(poDetailsMap);
@@ -125,44 +158,35 @@ const InvoiceTable: React.FC = () => {
         setCostCenters([]);
         setVendors([]);
         setGlCodes([]);
-        setIgsts([])
-        setCgsts([])
-        setSgsts([])
+        setIgsts([]);
+        setCgsts([]);
+        setSgsts([]);
         setPos([]);
       }
     };
     fetchDropdownData();
   }, []);
 
-
-  const calcTotalTaxAmount = (baseAmount: number, sgst: string, igst: string, cgst: string) => {
-    const SGST = parseTax(sgst)
-    const CGST = parseTax(cgst)
-    const IGST = parseTax(igst)
-
-    return (((CGST + SGST + IGST) * baseAmount) / 100) + baseAmount;
-  }
-
-
   const fetchInvoices = async () => {
     try {
-      console.log(user_id)
+      console.log(user_id);
       const response = await axios.get(`${baseUrl}/invoices/user/${user_id}`);
       if (response.status !== 200) {
-        throw new Error('Failed to fetch invoices');
+        throw new Error("Failed to fetch invoices");
       }
       const data: Invoice[] = response.data.map((invoice: any) => ({
         invoiceId: invoice.invoiceId,
         number: invoice.number,
         date: invoice.date,
         costCenter: invoice.costCenter,
+        gst: invoice.sgstAmount + invoice.igstAmount + invoice.cgstAmount,
         finalAmount: invoice.finalAmount,
         status: invoice.status,
-        utrNo : invoice.utrNo
+        utrNo: invoice.utrNo,
       }));
       setInvoices(data);
     } catch (error) {
-      console.error('Error fetching invoices:', error);
+      console.error("Error fetching invoices:", error);
     }
   };
 
@@ -178,42 +202,152 @@ const InvoiceTable: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | any>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | any>
+  ) => {
     const { name, value } = e.target;
     const files = e.currentTarget.files;
 
-
-    if (name === 'poNumber') {
+    if (name === "poNumber") {
       const selectedPoDetails = poDetails.get(value);
       if (selectedPoDetails) {
-        setCurrentPoId(selectedPoDetails.poId)
+        setCurrentPoId(selectedPoDetails.poId);
         setFormData((prev) => ({
           ...prev,
           [name]: value,
+          companyName: selectedPoDetails.vendor,
           paymentType: selectedPoDetails.paymentType,
           sgst: selectedPoDetails.sgst,
+          sgstAmount: selectedPoDetails.sgstAmount.toFixed(4),
           igst: selectedPoDetails.igst,
+          igstAmount: selectedPoDetails.igstAmount.toFixed(4),
           cgst: selectedPoDetails.cgst,
-          baseAmount: (selectedPoDetails.baseAmount).toFixed(4),
-          total: (calcTotalTaxAmount(selectedPoDetails.baseAmount, selectedPoDetails.cgst, selectedPoDetails.igst, selectedPoDetails.sgst)).toFixed(4),
-          description: value,
+          cgstAmount: selectedPoDetails.cgstAmount.toFixed(4),
+          baseAmount: selectedPoDetails.baseAmount.toFixed(4),
+          total: selectedPoDetails.finalAmount.toFixed(4),
           [name]: files ? files[0] : value,
         }));
       } else {
-        setCurrentPoId('')
+        setCurrentPoId("");
         setFormData((prev) => ({
           ...prev,
           [name]: value,
-          paymentType: '',
-          sgst: '',
-          igst: '',
-          cgst: '',
-          baseAmount: '',
-          total: '',
-          companyName: '',
+          companyName: "",
+          paymentType: "",
+          sgst: "",
+          sgstAmount: "",
+          igst: "",
+          igstAmount: "",
+          cgst: "",
+          cgstAmount: "",
+          baseAmount: "",
+          total: "",
           [name]: files ? files[0] : value,
         }));
       }
+    } else if (name === "igst") {
+      const igstPercentage = parseTax(value) / 100;
+      const baseAmount = parseFloat(formData.baseAmount);
+      const igstAmount = (baseAmount * igstPercentage).toFixed(4);
+
+      setFormData((prev) => ({
+        ...prev,
+        igst: value,
+        sgst: '0',
+        cgst: '0',
+        sgstAmount: '0',
+        cgstAmount: '0',
+        igstAmount: igstAmount,
+        total: (baseAmount + parseFloat(igstAmount)).toFixed(4),
+      }));
+    } else if (name === "sgst") {
+      const sgstPercentage = parseTax(value) / 100;
+      const baseAmount = parseFloat(formData.baseAmount);
+      const sgstAmount = (baseAmount * sgstPercentage).toFixed(4);
+      const cgstAmount = parseFloat(formData.cgstAmount);
+
+      setFormData((prev) => ({
+        ...prev,
+        sgst: value,
+        sgstAmount: sgstAmount,
+        igst: '0',
+        igstAmount: '0',
+        total: (baseAmount + parseFloat(sgstAmount) + cgstAmount).toFixed(4),
+      }));
+    } else if (name === "cgst") {
+      const cgstPercentage = parseTax(value) / 100;
+      const baseAmount = parseFloat(formData.baseAmount);
+      const cgstAmount = (baseAmount * cgstPercentage).toFixed(4);
+      const sgstAmount = parseFloat(formData.sgstAmount);
+
+      setFormData((prev) => ({
+        ...prev,
+        cgst: value,
+        igst: "0",
+        igstAmount: "0",
+        cgstAmount: cgstAmount,
+        total: (baseAmount + parseFloat(cgstAmount) + sgstAmount).toFixed(4),
+      }));
+    } else if (name === "baseAmount") {
+      const baseAmount = parseFloat(value);
+      const igstPercentage = parseTax(formData.igst) / 100;
+      const igstAmount = (baseAmount * igstPercentage).toFixed(4);
+      const sgstPercentage = parseTax(formData.sgst) / 100;
+      const sgstAmount = (baseAmount * sgstPercentage).toFixed(4);
+      const cgstPercentage = parseTax(formData.cgst) / 100;
+      const cgstAmount = (baseAmount * cgstPercentage).toFixed(4);
+
+      setFormData((prev) => ({
+        ...prev,
+        baseAmount: value,
+        igstAmount: igstAmount,
+        sgstAmount: sgstAmount,
+        cgstAmount: cgstAmount,
+        total: (
+          baseAmount +
+          parseFloat(igstAmount) +
+          parseFloat(sgstAmount) +
+          parseFloat(cgstAmount)
+        ).toFixed(4),
+      }));
+    } else if (name === "igstAmount") {
+      const igstAmount = parseFloat(value);
+
+      setFormData((prev) => ({
+        ...prev,
+        igstAmount: value,
+        sgstAmount: "0",
+        cgstAmount: "0",
+        total: (parseFloat(formData.baseAmount) + igstAmount).toFixed(4),
+      }));
+    } else if (name === "sgstAmount") {
+      const sgstAmount = parseFloat(value);
+      const cgstAmount = parseFloat(formData.cgstAmount);
+
+      setFormData((prev) => ({
+        ...prev,
+        sgstAmount: value,
+        igstAmount: "0",
+        total: (
+          parseFloat(formData.baseAmount) +
+          sgstAmount +
+          cgstAmount
+        ).toFixed(4),
+      }));
+    } else if (name === "cgstAmount") {
+      const cgstAmount = parseFloat(value);
+      const sgstAmount = parseFloat(formData.sgstAmount);
+
+      setFormData((prev) => ({
+        ...prev,
+        cgstAmount: value,
+        igstAmount: "0",
+        total: (
+          parseFloat(formData.baseAmount) +
+          cgstAmount +
+          sgstAmount
+        ).toFixed(4),
+      }));
     } else {
       setFormData((prev) => ({
         ...prev,
@@ -232,45 +366,69 @@ const InvoiceTable: React.FC = () => {
       baseAmount,
       paymentType,
       igst,
+      igstAmount,
       sgst,
+      sgstAmount,
       cgst,
+      cgstAmount,
       total,
       glCode,
       costCenter,
       receipt,
       approvalDoc,
-      description
+      description,
     } = formData;
 
-    if (!invoiceNumber || !invoiceDate || !poNumber || !companyName || !baseAmount || !igst || !sgst || !cgst || !total || !glCode || !costCenter || !receipt || !approvalDoc || !paymentType) {
-      alert('Please fill in all required fields.');
+    if (
+      !invoiceNumber ||
+      !invoiceDate ||
+      !poNumber ||
+      !companyName ||
+      !baseAmount ||
+      !igst ||
+      !sgst ||
+      !cgst ||
+      !total ||
+      !glCode ||
+      !costCenter ||
+      !receipt ||
+      !approvalDoc ||
+      !paymentType ||
+      !igstAmount ||
+      !sgstAmount ||
+      !cgstAmount
+    ) {
+      alert("Please fill in all required fields.");
       return;
     }
 
     const formDataToSubmit = new FormData();
-    formDataToSubmit.append('userId', user_id ?? '');
-    formDataToSubmit.append('number', invoiceNumber);
-    formDataToSubmit.append('costCenter', costCenter);
-    formDataToSubmit.append('glCode', glCode);
-    formDataToSubmit.append('poId', currentPoId);
-    formDataToSubmit.append('date', invoiceDate);
-    formDataToSubmit.append('baseAmount', baseAmount);
-    formDataToSubmit.append('finalAmount', total);
-    formDataToSubmit.append('vendor', companyName);
-    formDataToSubmit.append('sgst', sgst);
-    formDataToSubmit.append('cgst', cgst);
-    formDataToSubmit.append('igst', igst);
-    formDataToSubmit.append('description', description);
-    formDataToSubmit.append('paymentType', paymentType);
-    if (receipt) formDataToSubmit.append('receipts', receipt);
-    if (approvalDoc) formDataToSubmit.append('approvals', approvalDoc);
+    formDataToSubmit.append("userId", user_id ?? "");
+    formDataToSubmit.append("number", invoiceNumber);
+    formDataToSubmit.append("costCenter", costCenter);
+    formDataToSubmit.append("glCode", glCode);
+    formDataToSubmit.append("poId", currentPoId);
+    formDataToSubmit.append("date", invoiceDate);
+    formDataToSubmit.append("baseAmount", baseAmount);
+    formDataToSubmit.append("finalAmount", total);
+    formDataToSubmit.append("vendor", companyName);
+    formDataToSubmit.append("sgst", sgst);
+    formDataToSubmit.append("sgstAmount", sgstAmount);
+    formDataToSubmit.append("cgst", cgst);
+    formDataToSubmit.append("cgstAmount", cgstAmount);
+    formDataToSubmit.append("igst", igst);
+    formDataToSubmit.append("igstAmount", igstAmount);
+    formDataToSubmit.append("description", description);
+    formDataToSubmit.append("paymentType", paymentType);
+    if (receipt) formDataToSubmit.append("receipts", receipt);
+    if (approvalDoc) formDataToSubmit.append("approvals", approvalDoc);
 
     try {
-      formDataToSubmit.forEach(item => console.log(item));
+      formDataToSubmit.forEach((item) => console.log(item));
       await axios.post(`${baseUrl}/invoices`, formDataToSubmit, {
         headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+          "Content-Type": "multipart/form-data",
+        },
       });
       closeModal();
       fetchInvoices();
@@ -278,7 +436,6 @@ const InvoiceTable: React.FC = () => {
       console.error("Error submitting form:", error);
     }
   };
-
 
   return (
     <div className="mt-6 px-6 h-full">
@@ -318,6 +475,7 @@ const InvoiceTable: React.FC = () => {
               <th className="py-2 text-start px-4 border-b">Invoice nr.</th>
               <th className="py-2 text-start px-4 border-b">Date</th>
               <th className="py-2 text-start px-4 border-b">Cost Center</th>
+              <th className="py-2 text-start px-4 border-b">GST</th>
               <th className="py-2 text-start px-4 border-b">Amount</th>
               <th className="py-2 text-start px-4 border-b">UTR No.</th>
               <th className="py-2 text-start px-4 border-b">Status</th>
@@ -338,6 +496,7 @@ const InvoiceTable: React.FC = () => {
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.costCenter}
                 </td>
+                <td className="py-2 px-4 text-start border-b">{invoice.gst}</td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.finalAmount.toFixed(2)}
                 </td>
@@ -419,14 +578,13 @@ const InvoiceTable: React.FC = () => {
                 required
               >
                 <option value="">Select Cost Center</option>
-                {(costCenters.length > 0
-                  ? costCenters
-                  : ["CC001", "CC002", "CC003"]
-                ).map((center, index) => (
-                  <option key={index} value={center}>
-                    {center}
-                  </option>
-                ))}
+                {(costCenters.length > 0 ? costCenters : ["N/A"]).map(
+                  (center, index) => (
+                    <option key={index} value={center}>
+                      {center}
+                    </option>
+                  )
+                )}
               </select>
             </div>
 
@@ -440,13 +598,11 @@ const InvoiceTable: React.FC = () => {
               >
                 <option value="">Select PO Number</option>
                 <option value="n/a">N/A</option>
-                {(pos?.length > 0 ? pos : ["PO001", "PO002", "PO003"]).map(
-                  (po, index) => (
-                    <option key={index} value={po}>
-                      {po}
-                    </option>
-                  )
-                )}
+                {(pos?.length > 0 ? pos : []).map((po, index) => (
+                  <option key={index} value={po}>
+                    {po}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -518,6 +674,18 @@ const InvoiceTable: React.FC = () => {
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className="text-gray-500">IGST Amount</label>
+              <input
+                type="number"
+                name="igstAmount"
+                className="w-full border rounded p-2 mt-1 bg-white"
+                value={formData.igstAmount}
+                onChange={handleChange}
+                required
+              />
+            </div>
             <div>
               <label className="text-gray-500">SGST</label>
               <select
@@ -539,6 +707,17 @@ const InvoiceTable: React.FC = () => {
               </select>
             </div>
             <div>
+              <label className="text-gray-500">SGST Amount</label>
+              <input
+                type="number"
+                name="sgstAmount"
+                className="w-full border rounded p-2 mt-1 bg-white"
+                value={formData.sgstAmount}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
               <label className="text-gray-500">CGST</label>
               <select
                 name="cgst"
@@ -557,6 +736,17 @@ const InvoiceTable: React.FC = () => {
                   </option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="text-gray-500">CGST Amount</label>
+              <input
+                type="number"
+                name="cgstAmount"
+                className="w-full border rounded p-2 mt-1 bg-white"
+                value={formData.cgstAmount}
+                onChange={handleChange}
+                required
+              />
             </div>
             <div>
               <label className="text-gray-500">Total</label>
@@ -614,6 +804,5 @@ const InvoiceTable: React.FC = () => {
     </div>
   );
 };
-
 
 export default InvoiceTable;

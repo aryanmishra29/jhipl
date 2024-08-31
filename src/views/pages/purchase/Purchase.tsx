@@ -219,7 +219,7 @@ const Purchase: React.FC = () => {
             </div>
             <div className="form-group">
               <label htmlFor="quotation1" className="block font-bold mb-1">
-                Requisition Form
+                Quotation 1
               </label>
               <input
                 type="file"
@@ -232,7 +232,7 @@ const Purchase: React.FC = () => {
             </div>
             <div className="form-group">
               <label htmlFor="quotation2" className="block font-bold mb-1">
-                Comparative Form
+                Quotation 2
               </label>
               <input
                 type="file"
@@ -245,7 +245,7 @@ const Purchase: React.FC = () => {
             </div>
             <div className="form-group">
               <label htmlFor="quotation3" className="block font-bold mb-1">
-                Requisition Form
+                Quotation 3
               </label>
               <input
                 type="file"
@@ -257,6 +257,7 @@ const Purchase: React.FC = () => {
               />
             </div>
           </div>
+          <br/>
           <button
             type="submit"
             className="bg-green-600 flex justify-center w-full max-w-sm px-6 py-2 rounded-lg"

@@ -3,6 +3,7 @@ import { FaCheck, FaTimes } from "react-icons/fa";
 import Modal from "react-modal";
 import axios from "axios";
 import { Download } from "lucide-react";
+import parseTax from "../../../utils/parseTax";
 
 interface PurchaseOrder {
   poId: string;
@@ -50,11 +51,14 @@ const PurchaseOrder: React.FC = () => {
     quotationAmount: "",
     baseAmount: "",
     igst: "",
+    igstAmount: "",
     sgst: "",
+    sgstAmount: "",
     cgst: "",
+    cgstAmount: "",
     total: "",
     narration: "",
-    poFile: null
+    poFile: null,
   });
 
   const [vendors, setVendors] = useState<string[]>([]);
@@ -63,24 +67,6 @@ const PurchaseOrder: React.FC = () => {
   const [cgsts, setCgsts] = useState<string[]>([]);
   const [sgsts, setSgsts] = useState<string[]>([]);
   const [igsts, setIgsts] = useState<string[]>([]);
-
-  useEffect(() => {
-    const fetchPendingPORequests = async () => {
-      const response = await axios.get(
-        `${baseUrl}/purchase-orders/request/pending`
-      );
-      if (response.status !== 200) {
-        throw new Error("Failed to fetch purchase orders");
-      }
-      const mappedData = response.data.map((item: any) => ({
-        poRequestId: item.poRequestId,
-      }));
-
-      setFilesData(mappedData);
-      console.log(filesData);
-    };
-    fetchPendingPORequests();
-  }, []);
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
 
@@ -115,7 +101,20 @@ const PurchaseOrder: React.FC = () => {
 
     fetchDropdownData();
   }, []);
+  const fetchPendingPORequests = async () => {
+    const response = await axios.get(
+      `${baseUrl}/purchase-orders/request/pending`
+    );
+    if (response.status !== 200) {
+      throw new Error("Failed to fetch purchase orders");
+    }
+    const mappedData = response.data.map((item: any) => ({
+      poRequestId: item.poRequestId,
+    }));
 
+    setFilesData(mappedData);
+    console.log(filesData);
+  };
   const fetchPurchaseOrders = async () => {
     try {
       const response = await axios.get(`${baseUrl}/purchase-orders`);
@@ -141,6 +140,10 @@ const PurchaseOrder: React.FC = () => {
     fetchPurchaseOrders();
   }, []);
 
+  useEffect(() => {
+    fetchPendingPORequests();
+  }, []);
+
   const closeModal = () => {
     setIsModalOpen(false);
     setIsAcceptModalOpen(false);
@@ -151,10 +154,116 @@ const PurchaseOrder: React.FC = () => {
   ) => {
     const { name, value } = e.target;
     const files = e.currentTarget.files;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: files ? files[0] : value,
-    }));
+
+    if (name === "igst") {
+      const igstPercentage = parseTax(value) / 100;
+      const baseAmount = parseFloat(formData.baseAmount);
+      const igstAmount = (baseAmount * igstPercentage).toFixed(4);
+
+      setFormData((prev) => ({
+        ...prev,
+        igst: value,
+        sgst: "0",
+        cgst: "0",
+        sgstAmount: "0",
+        cgstAmount: "0",
+        igstAmount: igstAmount,
+        total: (baseAmount + parseFloat(igstAmount)).toFixed(4),
+      }));
+    } else if (name === "sgst") {
+      const sgstPercentage = parseTax(value) / 100;
+      const baseAmount = parseFloat(formData.baseAmount);
+      const sgstAmount = (baseAmount * sgstPercentage).toFixed(4);
+      const cgstAmount = parseFloat(formData.cgstAmount);
+
+      setFormData((prev) => ({
+        ...prev,
+        sgst: value,
+        sgstAmount: sgstAmount,
+        igst: "0",
+        igstAmount: "0",
+        total: (baseAmount + parseFloat(sgstAmount) + cgstAmount).toFixed(4),
+      }));
+    } else if (name === "cgst") {
+      const cgstPercentage = parseTax(value) / 100;
+      const baseAmount = parseFloat(formData.baseAmount);
+      const cgstAmount = (baseAmount * cgstPercentage).toFixed(4);
+      const sgstAmount = parseFloat(formData.sgstAmount);
+
+      setFormData((prev) => ({
+        ...prev,
+        cgst: value,
+        igst: "0",
+        igstAmount: "0",
+        cgstAmount: cgstAmount,
+        total: (baseAmount + parseFloat(cgstAmount) + sgstAmount).toFixed(4),
+      }));
+    } else if (name === "baseAmount") {
+      const baseAmount = parseFloat(value);
+      const igstPercentage = parseTax(formData.igst) / 100;
+      const igstAmount = (baseAmount * igstPercentage).toFixed(4);
+      const sgstPercentage = parseTax(formData.sgst) / 100;
+      const sgstAmount = (baseAmount * sgstPercentage).toFixed(4);
+      const cgstPercentage = parseTax(formData.cgst) / 100;
+      const cgstAmount = (baseAmount * cgstPercentage).toFixed(4);
+
+      setFormData((prev) => ({
+        ...prev,
+        baseAmount: value,
+        igstAmount: igstAmount,
+        sgstAmount: sgstAmount,
+        cgstAmount: cgstAmount,
+        total: (
+          baseAmount +
+          parseFloat(igstAmount) +
+          parseFloat(sgstAmount) +
+          parseFloat(cgstAmount)
+        ).toFixed(4),
+      }));
+    } else if (name === "igstAmount") {
+      const igstAmount = parseFloat(value);
+
+      setFormData((prev) => ({
+        ...prev,
+        igstAmount: value,
+        sgstAmount: "0",
+        cgstAmount: "0",
+        total: (parseFloat(formData.baseAmount) + igstAmount).toFixed(4),
+      }));
+    } else if (name === "sgstAmount") {
+      const sgstAmount = parseFloat(value);
+      const cgstAmount = parseFloat(formData.cgstAmount);
+
+      setFormData((prev) => ({
+        ...prev,
+        sgstAmount: value,
+        igstAmount: "0",
+        total: (
+          parseFloat(formData.baseAmount) +
+          sgstAmount +
+          cgstAmount
+        ).toFixed(4),
+      }));
+    } else if (name === "cgstAmount") {
+      const cgstAmount = parseFloat(value);
+      const sgstAmount = parseFloat(formData.sgstAmount);
+
+      setFormData((prev) => ({
+        ...prev,
+        cgstAmount: value,
+        igstAmount: "0",
+        total: (
+          parseFloat(formData.baseAmount) +
+          cgstAmount +
+          sgstAmount
+        ).toFixed(4),
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: files ? files[0] : value,
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,8 +275,11 @@ const PurchaseOrder: React.FC = () => {
       quotationAmount,
       baseAmount,
       igst,
+      igstAmount,
       sgst,
+      sgstAmount,
       cgst,
+      cgstAmount,
       total,
       narration,
       poFile,
@@ -182,8 +294,11 @@ const PurchaseOrder: React.FC = () => {
       !quotationAmount ||
       !baseAmount ||
       !igst ||
+      !igstAmount ||
       !sgst ||
+      !sgstAmount ||
       !cgst ||
+      !cgstAmount ||
       !total ||
       !narration ||
       !poFile
@@ -191,7 +306,7 @@ const PurchaseOrder: React.FC = () => {
       alert("Please fill in all required fields.");
       return;
     }
- console.log(selectedPoId)
+    console.log(selectedPoId);
     const formDataToSubmit = {
       poRequestId: selectedPoId,
       poNumber,
@@ -201,12 +316,14 @@ const PurchaseOrder: React.FC = () => {
       baseAmount: parseFloat(baseAmount),
       finalAmount: parseFloat(total),
       sgst,
+      sgstAmount: parseFloat(sgstAmount),
       cgst,
+      cgstAmount: parseFloat(cgstAmount),
       igst,
+      igstAmount: parseFloat(igstAmount),
       narration,
       po: poFile,
     };
-
 
     try {
       const response = await axios.post(
@@ -214,15 +331,16 @@ const PurchaseOrder: React.FC = () => {
         formDataToSubmit,
         {
           headers: {
-            'Content-Type': 'multipart/form-data',
-        },
+            "Content-Type": "multipart/form-data",
+          },
         }
       );
-      console.log(response)
+      console.log(response);
 
       if (response.status === 200) {
         closeModal();
         fetchPurchaseOrders();
+        fetchPendingPORequests();
       } else {
         throw new Error(`Unexpected response status: ${response.status}`);
       }
@@ -286,7 +404,7 @@ const PurchaseOrder: React.FC = () => {
       if (response.status === 200) {
         location.reload();
       }
-    } catch { }
+    } catch {}
   };
 
   const handleDownloadClick = (poRequestId: string, poId: string) => {
@@ -514,6 +632,19 @@ const PurchaseOrder: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">
+                IGST Amount
+              </label>
+              <input
+                type="number"
+                name="igstAmount"
+                value={formData.igstAmount}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-transparent border p-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
                 SGST
               </label>
               <select
@@ -533,6 +664,19 @@ const PurchaseOrder: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">
+                SGST Amount
+              </label>
+              <input
+                type="number"
+                name="sgstAmount"
+                value={formData.sgstAmount}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-transparent border p-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
                 CGST
               </label>
               <select
@@ -549,6 +693,19 @@ const PurchaseOrder: React.FC = () => {
                   </option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                CGST Amount
+              </label>
+              <input
+                type="number"
+                name="cgstAmount"
+                value={formData.cgstAmount}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-transparent border p-2"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">
