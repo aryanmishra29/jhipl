@@ -258,8 +258,9 @@ const AdminReimbursementTable: React.FC = () => {
                                     <input type="checkbox" className="custom-checkbox" />
                                 </th>
                                 <th className="py-2 text-start px-4 border-b">Date</th>
+                                <th className="py-2 text-start px-4 border-b">Name</th>
                                 <th className="py-2 text-start px-4 border-b">Amount</th>
-                                <th className="py-2 text-start px-4 border-b">Account (UTR, Ref)</th>
+                                <th className="py-2 text-start px-4 border-b">GL Code</th>
                                 <th className="py-2 text-start px-4 border-b">Cost Center</th>
                                 <th className="py-2 text-start px-4 border-b">Status</th>
                                 <th className="py-2 text-start px-4 border-b">Actions</th>
@@ -274,6 +275,7 @@ const AdminReimbursementTable: React.FC = () => {
                                             <input type="checkbox" className="custom-checkbox" />
                                         </td>
                                         <td className="py-2 px-4 text-start border-b">{reimbursement.date}</td>
+                                        <td className="py-2 px-4 text-start border-b">{reimbursement.name}</td>
                                         <td className={`py-2 px-4 text-start border-b ${amountColor}`}>{reimbursement.amount}</td>
                                         <td className="py-2 px-4 text-start border-b">{reimbursement.glCode}</td>
                                         <td className="py-2 px-4 text-start border-b">{reimbursement.costCenter}</td>
