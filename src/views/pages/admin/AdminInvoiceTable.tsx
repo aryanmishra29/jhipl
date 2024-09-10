@@ -60,9 +60,11 @@ const customStyles = {
     maxWidth: "90%",
     maxHeight: "90vh",
     overflow: "auto",
+    zIndex:1000
   },
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex:999
   },
 };
 
@@ -76,6 +78,9 @@ const AdminInvoiceTable: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
   const [formData, setFormData] = useState({
     invoiceId: "",
     invoiceNumber: "",
@@ -212,6 +217,28 @@ const AdminInvoiceTable: React.FC = () => {
       utrNo: invoice.utrNo,
     });
     setIsModalOpen(true);
+  };
+  const handleFilter = () => {
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+
+    // Filter invoices based on date range
+    const filtered = invoices.filter((invoice) => {
+      const invoiceDate = new Date(invoice.date);
+      return invoiceDate >= from && invoiceDate <= to;
+    });
+
+    setInvoices(filtered);
+    setShowPopup(false);
+  };
+  const togglePopup = () => {
+    setShowPopup(!showPopup);
+  };
+  const handleClearFilter = () => {
+    fetchInvoices(); // Reset to original invoices
+    setFromDate(""); // Clear the date fields
+    setToDate("");
+    setShowPopup(false); // Close the popup
   };
 
   const handleCloseModal = () => {
@@ -513,43 +540,84 @@ const AdminInvoiceTable: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <div className="w-auto">
-              <button className="w-full md:w-auto bg-[#636C59] font-bold px-8 py-1.5 rounded-xl flex items-center text-white justify-center">
-                All time
-                <FaChevronDown className="ml-2" />
-              </button>
-            </div>
-            <div className="w-auto">
-              <button className="w-full md:w-auto bg-[#636C59] text-white px-6 font-bold py-1.5 rounded-xl flex items-center justify-center">
-                Filter <FaFilter className="ml-2" />
-              </button>
-            </div>
+          <div className="w-auto relative inline-block">
+            <button
+              onClick={togglePopup}
+              className="w-full md:w-auto bg-[#636C59] text-white px-6 font-bold py-1.5 rounded-xl flex items-center justify-center"
+            >
+              Filter <FaFilter className="ml-2" />
+            </button>
+            {showPopup && (
+              <div className="absolute z-20 top-full mt-2 right-0 bg-white shadow-2xl rounded-lg p-4">
+                <label className="block text-sm font-bold mb-2 text-black">
+                  From Date:
+                </label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="border bg-transparent text-black rounded p-2"
+                />
+
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  To Date:
+                </label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="border bg-transparent text-black rounded p-2"
+                />
+
+                <div className="flex justify-between gap-2 mt-2">
+                  <button
+                    onClick={handleFilter}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-md"
+                  >
+                    Apply
+                  </button>
+                  <button
+                    onClick={handleClearFilter}
+                    className="bg-gray-500 text-white px-4 py-2 rounded-md"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-      <div className="overflow-x-auto noscroll-bar scroll-smooth">
+      <div className="overflow-x-auto noscroll-bar scroll-smooth max-h-[70vh]">
         <table className="w-full h-full text-[#8E8F8E] bg-white border-collapse">
           <thead className="bg-gray-100">
             <tr>
-              <th className="py-2 text-start px-4 border-b">
-                <input type="checkbox" className="custom-checkbox" />
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Invoice nr.
               </th>
-              <th className="py-2 text-start px-4 border-b">Invoice nr.</th>
-              <th className="py-2 text-start px-4 border-b">GL Code</th>
-              <th className="py-2 text-start px-4 border-b">PO Number</th>
-              <th className="py-2 text-start px-4 border-b">Date</th>
-              <th className="py-2 text-start px-4 border-b">Final Amount</th>
-              <th className="py-2 text-start px-4 border-b">Vendor</th>
-              <th className="py-2 text-start px-4 border-b">Actions</th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                GL Code
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                PO Number
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Date
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Final Amount
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Vendor
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="w-full">
             {invoices.map((invoice, index) => (
               <tr key={index} className="text-[#252525]">
-                <td className="py-2 text-start px-4 border-b">
-                  <input type="checkbox" className="custom-checkbox" />
-                </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.number}
                 </td>
@@ -557,7 +625,7 @@ const AdminInvoiceTable: React.FC = () => {
                   {invoice.glCode}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
-                  {idToPo.get(invoice.poId)}
+                  {idToPo.get(invoice.poId) === undefined?'-':idToPo.get(invoice.poId)}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.date}

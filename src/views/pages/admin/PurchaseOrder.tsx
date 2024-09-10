@@ -31,9 +31,11 @@ const customStyles = {
     maxWidth: "90%",
     maxHeight: "90vh",
     overflow: "auto",
+    zIndex:1000
   },
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex:999
   },
 };
 
@@ -416,7 +418,7 @@ const PurchaseOrder: React.FC = () => {
 
   return (
     <>
-      <div className="overflow-x-auto border-4 h-[50vh] overflow-y-scroll noscroll-bar scroll-smooth">
+      <div className="overflow-x-auto border-b-2 h-[42vh] overflow-y-scroll scroll-smooth">
         <div>
           <h1 className="text-3xl text-black font-semibold sticky top-0 backdrop-blur-xl p-3">
             PO Requests
@@ -424,16 +426,24 @@ const PurchaseOrder: React.FC = () => {
           <table className="w-full h-full text-[#8E8F8E]  bg-white">
             <thead className="min-w-full sticky top-14 backdrop-blur-xl">
               <tr>
-                <th className="py-2 text-start px-4 border-b">
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Requisition Form
                 </th>
-                <th className="py-2 text-start px-4 border-b">
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Comparative Form
                 </th>
-                <th className="py-2 text-start px-4 border-b">Quotation 1</th>
-                <th className="py-2 text-start px-4 border-b">Quotation 2</th>
-                <th className="py-2 text-start px-4 border-b">Quotation 3</th>
-                <th className="py-2 text-start px-4 border-b">Action</th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Quotation 1
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Quotation 2
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Quotation 3
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody className="w-full">
@@ -756,7 +766,7 @@ const PurchaseOrder: React.FC = () => {
           </div>
         </form>
       </Modal>
-      <div className="overflow-x-auto h-[50vh] overflow-y-scroll noscroll-bar scroll-smooth">
+      <div className="overflow-x-auto h-[42vh] overflow-y-scroll scroll-smooth">
         <div>
           <h1 className="text-3xl text-black font-semibold sticky top-0 backdrop-blur-xl  p-3">
             Purchase Orders
@@ -764,24 +774,28 @@ const PurchaseOrder: React.FC = () => {
           <table className="w-full h-full text-[rgb(142,143,142)] bg-white">
             <thead className="min-w-full sticky top-14 backdrop-blur-xl">
               <tr>
-                <th className="py-2 text-start px-4 border-b">
-                  <input type="checkbox" className="custom-checkbox" />
+                
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  PO Number
                 </th>
-                <th className="py-2 text-start px-4 border-b">PO Number</th>
-                <th className="py-2 text-start px-4 border-b">Vendor</th>
-                <th className="py-2 text-start px-4 border-b">
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Vendor
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Remaining Amount
                 </th>
-                <th className="py-2 text-start px-4 border-b">Final Amount</th>
-                <th className="py-2 text-start px-4 border-b">Documents</th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Final Amount
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Documents
+                </th>
               </tr>
             </thead>
             <tbody className="w-full">
               {purchaseOrders.map((po) => (
                 <tr key={po.poId} className="text-[#252525]">
-                  <td className="py-2 text-start px-4 border-b">
-                    <input type="checkbox" className="custom-checkbox" />
-                  </td>
+                 
                   <td className="py-2 px-4 text-start border-b">
                     {po.poNumber}
                   </td>

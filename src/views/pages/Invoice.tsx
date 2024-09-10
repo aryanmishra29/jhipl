@@ -54,9 +54,11 @@ const customStyles = {
     maxWidth: "90%",
     maxHeight: "90vh",
     overflow: "auto",
+    zIndex: 1000,
   },
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex:999
   },
 };
 
@@ -450,43 +452,40 @@ const InvoiceTable: React.FC = () => {
               <FaPlus className="mr-2" /> New invoice
             </button>
           </div>
-          <div className="flex gap-2">
-            <div className="w-auto relative inline-block">
-              <button className="w-full md:w-auto bg-[#636C59] font-bold px-8 py-1.5 rounded-xl flex items-center text-white justify-center">
-                All time
-                <FaChevronDown className="ml-2" />
-              </button>
-            </div>
-            <div className="w-auto relative inline-block">
-              <button className="w-full md:w-auto bg-[#636C59] text-white px-6 font-bold py-1.5 rounded-xl flex items-center justify-center">
-                Filter <FaFilter className="ml-2" />
-              </button>
-            </div>
-          </div>
         </div>
       </div>
-      <div className="overflow-x-auto noscroll-bar scroll-smooth">
+      <div className="overflow-auto scroll-smooth max-h-[70vh]">
         <table className="w-full h-full text-[#8E8F8E] bg-white">
           <thead className="min-w-full">
             <tr>
-              <th className="py-2 text-start px-4 border-b">
-                <input type="checkbox" className="custom-checkbox" />
+              
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Invoice nr.
               </th>
-              <th className="py-2 text-start px-4 border-b">Invoice nr.</th>
-              <th className="py-2 text-start px-4 border-b">Date</th>
-              <th className="py-2 text-start px-4 border-b">Cost Center</th>
-              <th className="py-2 text-start px-4 border-b">GST</th>
-              <th className="py-2 text-start px-4 border-b">Amount</th>
-              <th className="py-2 text-start px-4 border-b">UTR No.</th>
-              <th className="py-2 text-start px-4 border-b">Status</th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Date
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Cost Center
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                GST
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Amount
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                UTR No.
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Status
+              </th>
             </tr>
           </thead>
           <tbody className="w-full">
             {invoices.map((invoice) => (
               <tr key={invoice.invoiceId} className="text-[#252525]">
-                <td className="py-2 text-start px-4 border-b">
-                  <input type="checkbox" className="custom-checkbox" />
-                </td>
+               
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.number}
                 </td>
