@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaChevronDown, FaFilter, FaEdit, FaDownload } from "react-icons/fa";
+import { FaFilter, FaEdit, FaDownload } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import Modal from "react-modal";
 import axios from "axios";
@@ -60,11 +60,11 @@ const customStyles = {
     maxWidth: "90%",
     maxHeight: "90vh",
     overflow: "auto",
-    zIndex:1000
+    zIndex: 1000,
   },
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex:999
+    zIndex: 999,
   },
 };
 
@@ -625,7 +625,9 @@ const AdminInvoiceTable: React.FC = () => {
                   {invoice.glCode}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
-                  {idToPo.get(invoice.poId) === undefined?'-':idToPo.get(invoice.poId)}
+                  {idToPo.get(invoice.poId) === undefined
+                    ? "-"
+                    : idToPo.get(invoice.poId)}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.date}

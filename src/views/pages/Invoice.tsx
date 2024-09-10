@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  FaChevronDown,
-  FaPlus,
-  FaFilter,
-  FaCheck,
-  FaTimes,
-} from "react-icons/fa";
+import { FaPlus, FaCheck, FaTimes } from "react-icons/fa";
 import Modal from "react-modal";
 import axios from "axios";
 import parseTax from "../../utils/parseTax";
@@ -58,7 +52,7 @@ const customStyles = {
   },
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex:999
+    zIndex: 999,
   },
 };
 
@@ -255,10 +249,10 @@ const InvoiceTable: React.FC = () => {
       setFormData((prev) => ({
         ...prev,
         igst: value,
-        sgst: '0',
-        cgst: '0',
-        sgstAmount: '0',
-        cgstAmount: '0',
+        sgst: "0",
+        cgst: "0",
+        sgstAmount: "0",
+        cgstAmount: "0",
         igstAmount: igstAmount,
         total: (baseAmount + parseFloat(igstAmount)).toFixed(4),
       }));
@@ -272,8 +266,8 @@ const InvoiceTable: React.FC = () => {
         ...prev,
         sgst: value,
         sgstAmount: sgstAmount,
-        igst: '0',
-        igstAmount: '0',
+        igst: "0",
+        igstAmount: "0",
         total: (baseAmount + parseFloat(sgstAmount) + cgstAmount).toFixed(4),
       }));
     } else if (name === "cgst") {
@@ -458,7 +452,6 @@ const InvoiceTable: React.FC = () => {
         <table className="w-full h-full text-[#8E8F8E] bg-white">
           <thead className="min-w-full">
             <tr>
-              
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Invoice nr.
               </th>
@@ -485,7 +478,6 @@ const InvoiceTable: React.FC = () => {
           <tbody className="w-full">
             {invoices.map((invoice) => (
               <tr key={invoice.invoiceId} className="text-[#252525]">
-               
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.number}
                 </td>

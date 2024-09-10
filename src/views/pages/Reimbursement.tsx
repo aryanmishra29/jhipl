@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaSearch, FaChevronDown, FaPlus, FaFilter } from "react-icons/fa";
+import { FaPlus } from "react-icons/fa";
 import Modal from "react-modal";
 import axios from "axios";
 
@@ -191,7 +191,6 @@ const ReimbursementTable: React.FC = () => {
       <div className="mb-6 space-y-6">
         <h1 className="text-3xl text-black font-bold">Reimbursements</h1>
         <div className="flex flex-wrap justify-between space-y-2 md:space-y-0 md:space-x-2">
-          
           <div className="w-auto">
             <button
               onClick={openModal}
@@ -200,7 +199,6 @@ const ReimbursementTable: React.FC = () => {
               <FaPlus className="mr-2" /> New reimbursement
             </button>
           </div>
-        
         </div>
       </div>
       {/* table */}

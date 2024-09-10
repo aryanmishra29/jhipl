@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaChevronDown, FaPlus, FaFilter } from "react-icons/fa";
+import { FaPlus } from "react-icons/fa";
 import Modal from "react-modal";
 import axios from "axios";
 
@@ -24,7 +24,7 @@ const customStyles = {
   },
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex:999,
+    zIndex: 999,
   },
 };
 
