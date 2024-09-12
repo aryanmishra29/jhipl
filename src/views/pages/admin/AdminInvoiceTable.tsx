@@ -220,6 +220,7 @@ const AdminInvoiceTable: React.FC = () => {
     setIsModalOpen(true);
   };
   const handleFilter = () => {
+    if(fromDate === "" || toDate === "") return;
     const from = new Date(fromDate);
     const to = new Date(toDate);
 
@@ -495,7 +496,8 @@ const AdminInvoiceTable: React.FC = () => {
 
         setIsModalOpen(false);
         setSelectedInvoice(null);
-        location.reload();
+        await fetchInvoices();
+        handleFilter();
       } catch (error) {
         console.error("Error updating invoice:", error);
       }
