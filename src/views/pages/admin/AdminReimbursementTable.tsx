@@ -55,7 +55,7 @@ const customStyles = {
   },
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex:999,
+    zIndex: 999,
   },
 };
 
@@ -349,7 +349,23 @@ const AdminReimbursementTable: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto noscroll-bar scroll-smooth max-h-[70vh]">
+        <div className="overflow-x-auto scroll-smooth max-h-[65vh] scrollbar-visible">
+          <style>
+            {`
+          .scrollbar-visible::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+          }
+          .scrollbar-visible::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 5px;
+            cursor: pointer;
+          }
+          .scrollbar-visible::-webkit-scrollbar-track {
+            background: #f1f1f1;
+          }
+        `}
+          </style>
           <table className="w-full h-full text-[#8E8F8E] bg-white">
             <thead className="min-w-full">
               <tr>

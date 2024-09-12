@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaFilter, FaEdit, FaDownload } from "react-icons/fa";
+import { FaFilter, FaEdit, FaDownload, FaCheck, FaTimes } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import Modal from "react-modal";
 import axios from "axios";
@@ -136,6 +136,7 @@ const AdminInvoiceTable: React.FC = () => {
         sgstResponse.data.push("0");
         igstResponse.data.push("0");
         cgstResponse.data.push("0");
+        withholdingTaxResponse.data.push("0");
         setCostCenters(
           Array.isArray(costCentersResponse.data)
             ? costCentersResponse.data
@@ -188,7 +189,7 @@ const AdminInvoiceTable: React.FC = () => {
   const getWithholdingTaxAmount = (tax: string) => {
     const taxPercentage = parseTax(tax) / 100;
     const baseAmount = parseFloat(formData.baseAmount);
-    return (baseAmount * taxPercentage).toFixed(4);
+    return (baseAmount * taxPercentage).toFixed(2);
   };
 
   const handleEditClick = async (invoice: Invoice) => {
@@ -202,15 +203,15 @@ const AdminInvoiceTable: React.FC = () => {
       poNumber: idToPo.get(invoice.poId) || "",
       paymentType: invoice.paymentType,
       companyName: invoice.vendor,
-      baseAmount: invoice.baseAmount.toFixed(4),
+      baseAmount: invoice.baseAmount.toFixed(2),
       igst: invoice.igst,
-      igstAmount: invoice.igstAmount.toFixed(4),
+      igstAmount: invoice.igstAmount.toFixed(2),
       sgst: invoice.sgst,
-      sgstAmount: invoice.sgstAmount.toFixed(4),
+      sgstAmount: invoice.sgstAmount.toFixed(2),
       cgst: invoice.cgst,
-      cgstAmount: invoice.cgstAmount.toFixed(4),
+      cgstAmount: invoice.cgstAmount.toFixed(2),
       withholdingTax: invoice.withholdingTax,
-      total: invoice.finalAmount.toFixed(4),
+      total: invoice.finalAmount.toFixed(2),
       description: invoice.description,
       narration: invoice.narration,
       status: invoice.status,
@@ -343,7 +344,7 @@ const AdminInvoiceTable: React.FC = () => {
     if (name === "igst") {
       const igstPercentage = parseTax(value) / 100;
       const baseAmount = parseFloat(formData.baseAmount);
-      const igstAmount = (baseAmount * igstPercentage).toFixed(4);
+      const igstAmount = (baseAmount * igstPercentage).toFixed(2);
 
       setFormData((prev) => ({
         ...prev,
@@ -353,12 +354,12 @@ const AdminInvoiceTable: React.FC = () => {
         sgstAmount: "0",
         cgstAmount: "0",
         igstAmount: igstAmount,
-        total: (baseAmount + parseFloat(igstAmount)).toFixed(4),
+        total: (baseAmount + parseFloat(igstAmount)).toFixed(2),
       }));
     } else if (name === "sgst") {
       const sgstPercentage = parseTax(value) / 100;
       const baseAmount = parseFloat(formData.baseAmount);
-      const sgstAmount = (baseAmount * sgstPercentage).toFixed(4);
+      const sgstAmount = (baseAmount * sgstPercentage).toFixed(2);
       const cgstAmount = parseFloat(formData.cgstAmount);
 
       setFormData((prev) => ({
@@ -367,12 +368,12 @@ const AdminInvoiceTable: React.FC = () => {
         sgstAmount: sgstAmount,
         igst: "0",
         igstAmount: "0",
-        total: (baseAmount + parseFloat(sgstAmount) + cgstAmount).toFixed(4),
+        total: (baseAmount + parseFloat(sgstAmount) + cgstAmount).toFixed(2),
       }));
     } else if (name === "cgst") {
       const cgstPercentage = parseTax(value) / 100;
       const baseAmount = parseFloat(formData.baseAmount);
-      const cgstAmount = (baseAmount * cgstPercentage).toFixed(4);
+      const cgstAmount = (baseAmount * cgstPercentage).toFixed(2);
       const sgstAmount = parseFloat(formData.sgstAmount);
 
       setFormData((prev) => ({
@@ -381,16 +382,16 @@ const AdminInvoiceTable: React.FC = () => {
         igst: "0",
         igstAmount: "0",
         cgstAmount: cgstAmount,
-        total: (baseAmount + parseFloat(cgstAmount) + sgstAmount).toFixed(4),
+        total: (baseAmount + parseFloat(cgstAmount) + sgstAmount).toFixed(2),
       }));
     } else if (name === "baseAmount") {
       const baseAmount = parseFloat(value);
       const igstPercentage = parseTax(formData.igst) / 100;
-      const igstAmount = (baseAmount * igstPercentage).toFixed(4);
+      const igstAmount = (baseAmount * igstPercentage).toFixed(2);
       const sgstPercentage = parseTax(formData.sgst) / 100;
-      const sgstAmount = (baseAmount * sgstPercentage).toFixed(4);
+      const sgstAmount = (baseAmount * sgstPercentage).toFixed(2);
       const cgstPercentage = parseTax(formData.cgst) / 100;
-      const cgstAmount = (baseAmount * cgstPercentage).toFixed(4);
+      const cgstAmount = (baseAmount * cgstPercentage).toFixed(2);
 
       setFormData((prev) => ({
         ...prev,
@@ -403,7 +404,7 @@ const AdminInvoiceTable: React.FC = () => {
           parseFloat(igstAmount) +
           parseFloat(sgstAmount) +
           parseFloat(cgstAmount)
-        ).toFixed(4),
+        ).toFixed(2),
       }));
     } else if (name === "igstAmount") {
       const igstAmount = parseFloat(value);
@@ -413,7 +414,7 @@ const AdminInvoiceTable: React.FC = () => {
         igstAmount: value,
         sgstAmount: "0",
         cgstAmount: "0",
-        total: (parseFloat(formData.baseAmount) + igstAmount).toFixed(4),
+        total: (parseFloat(formData.baseAmount) + igstAmount).toFixed(2),
       }));
     } else if (name === "sgstAmount") {
       const sgstAmount = parseFloat(value);
@@ -427,7 +428,7 @@ const AdminInvoiceTable: React.FC = () => {
           parseFloat(formData.baseAmount) +
           sgstAmount +
           cgstAmount
-        ).toFixed(4),
+        ).toFixed(2),
       }));
     } else if (name === "cgstAmount") {
       const cgstAmount = parseFloat(value);
@@ -441,7 +442,7 @@ const AdminInvoiceTable: React.FC = () => {
           parseFloat(formData.baseAmount) +
           cgstAmount +
           sgstAmount
-        ).toFixed(4),
+        ).toFixed(2),
       }));
     } else {
       setFormData((prev) => ({
@@ -472,7 +473,7 @@ const AdminInvoiceTable: React.FC = () => {
         igst: formData.igst,
         igstAmount: parseFloat(formData.igstAmount),
         withholdingTax: formData.withholdingTax,
-        utrNo: formData.utrNo,
+        utrNo: formData.utrNo || "",
         status: formData.status,
         description: formData.description,
         narration: formData.narration,
@@ -588,7 +589,23 @@ const AdminInvoiceTable: React.FC = () => {
           </div>
         </div>
       </div>
-      <div className="overflow-x-auto noscroll-bar scroll-smooth max-h-[70vh]">
+      <div className="overflow-x-auto overflow-y-scroll scroll-smooth max-h-[65vh] scrollbar-visible">
+        <style>
+          {`
+          .scrollbar-visible::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+          }
+          .scrollbar-visible::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 5px;
+            cursor: pointer;
+          }
+          .scrollbar-visible::-webkit-scrollbar-track {
+            background: #f1f1f1;
+          }
+        `}
+        </style>
         <table className="w-full h-full text-[#8E8F8E] bg-white border-collapse">
           <thead className="bg-gray-100">
             <tr>
@@ -609,6 +626,9 @@ const AdminInvoiceTable: React.FC = () => {
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Vendor
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Status
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Actions
@@ -637,6 +657,17 @@ const AdminInvoiceTable: React.FC = () => {
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.vendor}
+                </td>
+                <td className="py-2 px-4 text-center border-b">
+                  <div
+                    className={`w-fit rounded-full px-2 ${
+                      invoice.status === "APPROVED"
+                        ? "bg-[#636C59] text-white"
+                        : "bg-[#D7E6C5]"
+                    }`}
+                  >
+                    {invoice.status === "APPROVED" ? <FaCheck /> : <FaTimes />}
+                  </div>
                 </td>
                 <td className="py-2 px-4 border-b">
                   <button
@@ -725,7 +756,6 @@ const AdminInvoiceTable: React.FC = () => {
                   className="w-full border rounded p-2 bg-white "
                   value={formData.poNumber}
                   onChange={handleChange}
-                  required
                 >
                   <option value="">Select PO Number</option>
                   <option value="n/a">N/A</option>
@@ -929,7 +959,6 @@ const AdminInvoiceTable: React.FC = () => {
                   className="w-full border rounded p-2 bg-white "
                   value={formData.utrNo}
                   onChange={handleChange}
-                  required
                 />
               </div>
             </div>
