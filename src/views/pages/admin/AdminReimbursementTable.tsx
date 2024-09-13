@@ -82,6 +82,7 @@ const AdminReimbursementTable: React.FC = () => {
   }, []);
 
   const handleFilter = () => {
+    if(!fromDate || !toDate || fromDate === "" || toDate === "") return;
     const from = new Date(fromDate);
     const to = new Date(toDate);
 
@@ -160,7 +161,8 @@ const AdminReimbursementTable: React.FC = () => {
           throw new Error("Network response was not ok");
         }
 
-        fetchReimbursements();
+        await fetchReimbursements();
+        handleFilter();
         closeModal();
       }
     } catch (error) {

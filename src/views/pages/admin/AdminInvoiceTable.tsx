@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaFilter, FaEdit, FaDownload, FaCheck, FaTimes } from "react-icons/fa";
+import { FaFilter, FaEdit, FaDownload, FaCheck, FaTimes, FaClock } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import Modal from "react-modal";
 import axios from "axios";
@@ -668,7 +668,7 @@ const AdminInvoiceTable: React.FC = () => {
                         : "bg-[#D7E6C5]"
                     }`}
                   >
-                    {invoice.status === "APPROVED" ? <FaCheck /> : <FaTimes />}
+                    {invoice.status === "APPROVED" ? <FaCheck /> : invoice.status === "PENDING" ?<FaClock/>: <FaTimes />}
                   </div>
                 </td>
                 <td className="py-2 px-4 border-b">

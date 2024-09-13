@@ -163,23 +163,7 @@ const ReimbursementTable: React.FC = () => {
         },
       });
 
-      setReimbursements([
-        ...reimbursements,
-        {
-          reimbursementId: "new_id",
-          name: nameOfEmployee,
-          glCode,
-          costCenter,
-          date,
-          amount: parseFloat(amount),
-          advance: parseFloat(advance),
-          status: "Pending",
-          remarks: "",
-          utrNo: "",
-          userId: user_id,
-          description,
-        },
-      ]);
+      await fetchReimbursements();
       closeModal();
     } catch (error) {
       console.error("Error submitting form", error);

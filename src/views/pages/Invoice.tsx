@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaPlus, FaCheck, FaTimes } from "react-icons/fa";
+import { FaPlus, FaCheck, FaTimes, FaClock } from "react-icons/fa";
 import Modal from "react-modal";
 import axios from "axios";
 import parseTax from "../../utils/parseTax";
@@ -502,7 +502,13 @@ const InvoiceTable: React.FC = () => {
                         : "bg-[#D7E6C5]"
                     }`}
                   >
-                    {invoice.status === "APPROVED" ? <FaCheck /> : <FaTimes />}
+                    {invoice.status === "APPROVED" ? (
+                      <FaCheck />
+                    ) : invoice.status === "PENDING" ? (
+                      <FaClock />
+                    ) : (
+                      <FaTimes />
+                    )}
                   </div>
                 </td>
               </tr>
