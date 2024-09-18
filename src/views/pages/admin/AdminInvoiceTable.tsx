@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { FaFilter, FaEdit, FaDownload, FaCheck, FaTimes, FaClock } from "react-icons/fa";
+import {
+  FaFilter,
+  FaEdit,
+  FaDownload,
+  FaCheck,
+  FaTimes,
+  FaClock,
+} from "react-icons/fa";
 import * as XLSX from "xlsx";
 import Modal from "react-modal";
 import axios from "axios";
@@ -104,7 +111,7 @@ const AdminInvoiceTable: React.FC = () => {
     status: "",
     utrNo: "",
   });
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [costCenters, setCostCenters] = useState<string[]>([]);
   const [vendors, setVendors] = useState<string[]>([]);
   const [glCodes, setGlCodes] = useState<string[]>([]);
@@ -220,7 +227,7 @@ const AdminInvoiceTable: React.FC = () => {
     setIsModalOpen(true);
   };
   const handleFilter = () => {
-    if(fromDate === "" || toDate === "") return;
+    if (fromDate === "" || toDate === "") return;
     const from = new Date(fromDate);
     const to = new Date(toDate);
 
@@ -455,6 +462,8 @@ const AdminInvoiceTable: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     if (formData) {
       const updateRequest = {
         invoiceId: formData.invoiceId,
@@ -500,6 +509,8 @@ const AdminInvoiceTable: React.FC = () => {
         handleFilter();
       } catch (error) {
         console.error("Error updating invoice:", error);
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
@@ -668,7 +679,13 @@ const AdminInvoiceTable: React.FC = () => {
                         : "bg-[#D7E6C5]"
                     }`}
                   >
-                    {invoice.status === "APPROVED" ? <FaCheck /> : invoice.status === "PENDING" ?<FaClock/>: <FaTimes />}
+                    {invoice.status === "APPROVED" ? (
+                      <FaCheck />
+                    ) : invoice.status === "PENDING" ? (
+                      <FaClock />
+                    ) : (
+                      <FaTimes />
+                    )}
                   </div>
                 </td>
                 <td className="py-2 px-4 border-b">
@@ -1007,9 +1024,35 @@ const AdminInvoiceTable: React.FC = () => {
             <div className=" flex justify-end">
               <button
                 type="submit"
-                className="bg-[#D7E6C5] text-black px-4 py-2 rounded"
+                className={`bg-[#D7E6C5] text-black px-4 py-2 rounded ${
+                  isSubmitting ? "cursor-not-allowed" : "cursor-pointer"
+                }`}
+                disabled={isSubmitting}
               >
-                Save Invoice
+                {isSubmitting ? (
+                  <svg
+                    className="animate-spin h-5 w-5 text-black"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                ) : (
+                  "Save Invoice"
+                )}
               </button>
             </div>
           </form>

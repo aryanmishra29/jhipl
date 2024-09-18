@@ -62,7 +62,7 @@ const PurchaseOrder: React.FC = () => {
     narration: "",
     poFile: null,
   });
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [vendors, setVendors] = useState<string[]>([]);
   const baseUrl = "https://jhipl.grobird.in";
   const [filesData, setFilesData] = useState<any[]>([]);
@@ -270,6 +270,10 @@ const PurchaseOrder: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     const {
       poNumber,
       paymentType,
@@ -349,6 +353,8 @@ const PurchaseOrder: React.FC = () => {
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("Error submitting form. Please check the console for details.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -752,9 +758,35 @@ const PurchaseOrder: React.FC = () => {
           <div className="mt-4">
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+              className={`px-4 py-2 bg-blue-500 text-white rounded-md ${
+                isSubmitting ? "cursor-not-allowed" : "cursor-pointer"
+              }`}
+              disabled={isSubmitting}
             >
-              Submit
+              {isSubmitting ? (
+                <svg
+                  className="animate-spin h-5 w-5 text-black"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              ) : (
+                "Submit"
+              )}
             </button>
             <button
               type="button"
@@ -774,7 +806,6 @@ const PurchaseOrder: React.FC = () => {
           <table className="w-full h-full text-[rgb(142,143,142)] bg-white">
             <thead className="min-w-full sticky top-14 backdrop-blur-xl">
               <tr>
-                
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   PO Number
                 </th>
@@ -795,7 +826,6 @@ const PurchaseOrder: React.FC = () => {
             <tbody className="w-full">
               {purchaseOrders.map((po) => (
                 <tr key={po.poId} className="text-[#252525]">
-                 
                   <td className="py-2 px-4 text-start border-b">
                     {po.poNumber}
                   </td>

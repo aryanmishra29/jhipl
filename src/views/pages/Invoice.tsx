@@ -80,6 +80,7 @@ const InvoiceTable: React.FC = () => {
     approvalDoc: null as File | null,
     description: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [poDetails, setPoDetails] = useState<Map<string, PoDetails>>(new Map());
   const [currentPoId, setCurrentPoId] = useState<string>("");
   const [costCenters, setCostCenters] = useState<string[]>([]);
@@ -354,6 +355,8 @@ const InvoiceTable: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const {
       invoiceNumber,
       invoiceDate,
@@ -420,7 +423,6 @@ const InvoiceTable: React.FC = () => {
     if (approvalDoc) formDataToSubmit.append("approvals", approvalDoc);
 
     try {
-      formDataToSubmit.forEach((item) => console.log(item));
       await axios.post(`${baseUrl}/invoices`, formDataToSubmit, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -430,6 +432,8 @@ const InvoiceTable: React.FC = () => {
       fetchInvoices();
     } catch (error) {
       console.error("Error submitting form:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -791,9 +795,35 @@ const InvoiceTable: React.FC = () => {
           <div className="mt-4 flex justify-between">
             <button
               type="submit"
-              className="bg-[#D7E6C5] text-black p-2 rounded"
+              className={`bg-[#D7E6C5] text-black px-4 py-2 rounded ${
+                isSubmitting ? "cursor-not-allowed" : "cursor-pointer"
+              }`}
+              disabled={isSubmitting}
             >
-              Save invoice
+              {isSubmitting ? (
+                <svg
+                  className="animate-spin h-5 w-5 text-black"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              ) : (
+                "Save Invoice"
+              )}
             </button>
           </div>
         </form>
