@@ -8,6 +8,7 @@ import parseTax from "../../utils/parseTax";
 interface Invoice {
   invoiceId: string;
   number: string;
+  vendor: string;
   date: string;
   costCenter: string;
   gst: string;
@@ -174,6 +175,7 @@ const InvoiceTable: React.FC = () => {
       const data: Invoice[] = response.data.map((invoice: any) => ({
         invoiceId: invoice.invoiceId,
         number: invoice.number,
+        vendor: invoice.vendor,
         date: invoice.date,
         costCenter: invoice.costCenter,
         gst: invoice.sgstAmount + invoice.igstAmount + invoice.cgstAmount,
@@ -460,6 +462,9 @@ const InvoiceTable: React.FC = () => {
                 Invoice nr.
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Vendor
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Date
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
@@ -484,6 +489,9 @@ const InvoiceTable: React.FC = () => {
               <tr key={invoice.invoiceId} className="text-[#252525]">
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.number}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.vendor}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.date}

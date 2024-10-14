@@ -626,6 +626,9 @@ const AdminInvoiceTable: React.FC = () => {
                 Invoice nr.
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Vendor
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 GL Code
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
@@ -653,6 +656,9 @@ const AdminInvoiceTable: React.FC = () => {
               <tr key={index} className="text-[#252525]">
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.number}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.vendor}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.glCode}
