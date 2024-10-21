@@ -11,6 +11,7 @@ import * as XLSX from "xlsx";
 import Modal from "react-modal";
 import axios from "axios";
 import parseTax from "../../../utils/parseTax";
+import { Search } from "lucide-react";
 
 interface Invoice {
   invoiceId: string;
@@ -77,6 +78,7 @@ const customStyles = {
 
 const AdminInvoiceTable: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([]);
   const baseUrl = "https://jhipl.grobird.in";
   // const baseUrl = "http://localhost:8080";
   useEffect(() => {
@@ -87,7 +89,9 @@ const AdminInvoiceTable: React.FC = () => {
   const [, setSelectedInvoice] = useState<Invoice | null>(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [showPopup, setShowPopup] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
     invoiceId: "",
     invoiceNumber: "",
@@ -124,6 +128,19 @@ const AdminInvoiceTable: React.FC = () => {
   const [withholdingTaxes, setWithholdingTaxes] = useState<string[]>([]);
   const [sgsts, setSgsts] = useState<string[]>([]);
   const [igsts, setIgsts] = useState<string[]>([]);
+
+  const [searchFilteredInvoices, setSearchFilteredInvoices] =
+    useState<Invoice[]>(filteredInvoices);
+
+  useEffect(() => {
+    const newSearchFilteredInvoices = filteredInvoices.filter(
+      (invoice) =>
+        invoice.glCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        invoice.vendor.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setSearchFilteredInvoices(newSearchFilteredInvoices);
+  }, [searchTerm, filteredInvoices]);
+
 
   useEffect(() => {
     const fetchDropdownData = async () => {
@@ -227,26 +244,43 @@ const AdminInvoiceTable: React.FC = () => {
     setIsModalOpen(true);
   };
   const handleFilter = () => {
-    if (fromDate === "" || toDate === "") return;
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
+    let filtered: Invoice[] = invoices;
 
-    // Filter invoices based on date range
-    const filtered = invoices.filter((invoice) => {
-      const invoiceDate = new Date(invoice.date);
-      return invoiceDate >= from && invoiceDate <= to;
-    });
+    if (
+      (statusFilter === "" || statusFilter === "Select Status") &&
+      (fromDate === "" || toDate === "")
+    ) {
+      setShowPopup(false);
+      return;
+    }
 
-    setInvoices(filtered);
+    if (fromDate !== "" && toDate !== "") {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+
+      // Filter invoices based on date range
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.date);
+        return invoiceDate >= from && invoiceDate <= to;
+      });
+    }
+
+    if (statusFilter !== "" && statusFilter !== "Select Status") {
+      filtered = filtered.filter((invoice) => invoice.status === statusFilter);
+    }
+
+    setFilteredInvoices(filtered);
     setShowPopup(false);
   };
+
   const togglePopup = () => {
     setShowPopup(!showPopup);
   };
-  const handleClearFilter = () => {
-    fetchInvoices(); // Reset to original invoices
+  const handleClearFilter = async () => {
+    setFilteredInvoices(invoices); // Reset to original invoices
     setFromDate(""); // Clear the date fields
     setToDate("");
+    setStatusFilter(""); // Clear the status filter
     setShowPopup(false); // Close the popup
   };
 
@@ -263,6 +297,7 @@ const AdminInvoiceTable: React.FC = () => {
       }
       const data: Invoice[] = await response.json();
       setInvoices(data);
+      setFilteredInvoices(data);
     } catch (error) {
       console.error("Error fetching invoices:", error);
     }
@@ -452,6 +487,14 @@ const AdminInvoiceTable: React.FC = () => {
           sgstAmount
         ).toFixed(2),
       }));
+    } else if (name === "withholdingTax"){
+      const withholdingTax = value;
+      const withholdingTaxAmount = getWithholdingTaxAmount(withholdingTax);
+      setFormData((prev) => ({
+        ...prev,
+        withholdingTax: value,
+        total: (parseFloat(formData.total) - parseFloat(withholdingTaxAmount)).toFixed(2), 
+      }));
     } else {
       setFormData((prev) => ({
         ...prev,
@@ -554,6 +597,16 @@ const AdminInvoiceTable: React.FC = () => {
               </button>
             </div>
           </div>
+          <div className="w-auto relative inline-flex">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by GL Code or Vendor"
+              className="w-80 bg-white border border-black text-black pl-9 pr-2 py-1 rounded-xl"
+            />
+          </div>
           <div className="w-auto relative inline-block">
             <button
               onClick={togglePopup}
@@ -583,15 +636,32 @@ const AdminInvoiceTable: React.FC = () => {
                   className="border bg-transparent text-black rounded p-2"
                 />
 
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  className="w-full border rounded p-2 bg-white text-black "
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="">Select Status</option>
+                  {["PENDING", "APPROVED", "REJECTED"].map((type, index) => (
+                    <option key={index} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+
                 <div className="flex justify-between gap-2 mt-2">
                   <button
-                    onClick={handleFilter}
+                    onClick={async () => await handleFilter()}
                     className="bg-blue-500 text-white px-4 py-2 rounded-md"
                   >
                     Apply
                   </button>
                   <button
-                    onClick={handleClearFilter}
+                    onClick={async () => await handleClearFilter()}
                     className="bg-gray-500 text-white px-4 py-2 rounded-md"
                   >
                     Clear
@@ -623,7 +693,10 @@ const AdminInvoiceTable: React.FC = () => {
           <thead className="bg-gray-100">
             <tr>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                Invoice nr.
+                Invoice#
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Date
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Vendor
@@ -635,13 +708,10 @@ const AdminInvoiceTable: React.FC = () => {
                 PO Number
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                Date
-              </th>
-              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Final Amount
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                Vendor
+                Cost Center
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Status
@@ -652,10 +722,13 @@ const AdminInvoiceTable: React.FC = () => {
             </tr>
           </thead>
           <tbody className="w-full">
-            {invoices.map((invoice, index) => (
+            {searchFilteredInvoices.map((invoice, index) => (
               <tr key={index} className="text-[#252525]">
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.number}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.date}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.vendor}
@@ -668,14 +741,12 @@ const AdminInvoiceTable: React.FC = () => {
                     ? "-"
                     : idToPo.get(invoice.poId)}
                 </td>
-                <td className="py-2 px-4 text-start border-b">
-                  {invoice.date}
-                </td>
+
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.finalAmount}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
-                  {invoice.vendor}
+                  {invoice.costCenter}
                 </td>
                 <td className="py-2 px-4 text-center border-b">
                   <div

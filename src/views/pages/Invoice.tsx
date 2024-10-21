@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { FaPlus, FaCheck, FaTimes, FaClock } from "react-icons/fa";
+import { FaPlus, FaCheck, FaTimes, FaClock, FaFilter } from "react-icons/fa";
+import { Search } from "lucide-react";
 import Modal from "react-modal";
 import axios from "axios";
 import parseTax from "../../utils/parseTax";
+import SearchableDropdown from "../../components/SearchableDropdown.tsx";
 
 // Define the Invoice interface
 interface Invoice {
@@ -11,6 +13,7 @@ interface Invoice {
   vendor: string;
   date: string;
   costCenter: string;
+  glCode:string;
   gst: string;
   finalAmount: number;
   status: string;
@@ -59,6 +62,12 @@ const customStyles = {
 
 const InvoiceTable: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([]);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     invoiceNumber: "",
@@ -96,6 +105,19 @@ const InvoiceTable: React.FC = () => {
   const baseUrl = "https://jhipl.grobird.in";
   // const baseUrl = 'http://localhost:8080';
   const user_id = localStorage.getItem("userId");
+
+  const [searchFilteredInvoices, setSearchFilteredInvoices] =
+    useState<Invoice[]>(filteredInvoices);
+
+  useEffect(() => {
+    const newSearchFilteredInvoices = filteredInvoices.filter(
+      (invoice) =>
+        invoice.glCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        invoice.vendor.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setSearchFilteredInvoices(newSearchFilteredInvoices);
+  }, [searchTerm, filteredInvoices]);
+
 
   useEffect(() => {
     const fetchDropdownData = async () => {
@@ -178,12 +200,14 @@ const InvoiceTable: React.FC = () => {
         vendor: invoice.vendor,
         date: invoice.date,
         costCenter: invoice.costCenter,
+        glCode: invoice.glCode,
         gst: invoice.sgstAmount + invoice.igstAmount + invoice.cgstAmount,
         finalAmount: invoice.finalAmount,
         status: invoice.status,
         utrNo: invoice.utrNo,
       }));
       setInvoices(data);
+      setFilteredInvoices(data);
     } catch (error) {
       console.error("Error fetching invoices:", error);
     }
@@ -200,12 +224,52 @@ const InvoiceTable: React.FC = () => {
   const closeModal = () => {
     setIsModalOpen(false);
   };
+   const handleFilter = () => {
+     let filtered: Invoice[] = invoices;
+
+     if (
+       (statusFilter === "" || statusFilter === "Select Status") &&
+       (fromDate === "" || toDate === "")
+     ) {
+       setShowPopup(false);
+       return;
+     }
+
+     if (fromDate !== "" && toDate !== "") {
+       const from = new Date(fromDate);
+       const to = new Date(toDate);
+
+       // Filter invoices based on date range
+       filtered = filtered.filter((invoice) => {
+         const invoiceDate = new Date(invoice.date);
+         return invoiceDate >= from && invoiceDate <= to;
+       });
+     }
+
+     if (statusFilter !== "" && statusFilter !== "Select Status") {
+       filtered = filtered.filter((invoice) => invoice.status === statusFilter);
+     }
+
+     setFilteredInvoices(filtered);
+     setShowPopup(false);
+   };
+
+   const togglePopup = () => {
+     setShowPopup(!showPopup);
+   };
+   const handleClearFilter = () =>{
+     setFilteredInvoices(invoices); // Reset to original invoices
+     setFromDate(""); // Clear the date fields
+     setToDate("");
+     setStatusFilter(""); // Clear the status filter
+     setShowPopup(false); // Close the popup
+   };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | any>
   ) => {
     const { name, value } = e.target;
-    const files = e.currentTarget.files;
+    const files = (e.target as HTMLInputElement).files;
 
     if (name === "poNumber") {
       const selectedPoDetails = poDetails.get(value);
@@ -350,7 +414,7 @@ const InvoiceTable: React.FC = () => {
     } else {
       setFormData((prev) => ({
         ...prev,
-        [name]: files ? files[0] : value,
+        [name]: (files && files.length>0) ? files[0] : value,
       }));
     }
   };
@@ -430,6 +494,7 @@ const InvoiceTable: React.FC = () => {
           "Content-Type": "multipart/form-data",
         },
       });
+      // formDataToSubmit.forEach((value, key) => console.log(key, value));
       closeModal();
       fetchInvoices();
     } catch (error) {
@@ -452,6 +517,80 @@ const InvoiceTable: React.FC = () => {
               <FaPlus className="mr-2" /> New invoice
             </button>
           </div>
+          <div className="w-auto relative inline-flex">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by GL Code or Vendor"
+              className="w-80 bg-white border border-black text-black pl-9 pr-2 py-1 rounded-xl"
+            />
+          </div>
+
+          <div className="w-auto relative inline-block">
+            <button
+              onClick={togglePopup}
+              className="w-full md:w-auto bg-[#636C59] text-white px-6 font-bold py-1.5 rounded-xl flex items-center justify-center"
+            >
+              Filter <FaFilter className="ml-2" />
+            </button>
+            {showPopup && (
+              <div className="absolute z-20 top-full mt-2 right-0 bg-white shadow-2xl rounded-lg p-4">
+                <label className="block text-sm font-bold mb-2 text-black">
+                  From Date:
+                </label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="border bg-transparent text-black rounded p-2"
+                />
+
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  To Date:
+                </label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="border bg-transparent text-black rounded p-2"
+                />
+
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  className="w-full border rounded p-2 bg-white text-black "
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="">Select Status</option>
+                  {["PENDING", "APPROVED", "REJECTED"].map((type, index) => (
+                    <option key={index} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="flex justify-between gap-2 mt-2">
+                  <button
+                    onClick={handleFilter}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-md"
+                  >
+                    Apply
+                  </button>
+                  <button
+                    onClick={handleClearFilter}
+                    className="bg-gray-500 text-white px-4 py-2 rounded-md"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <div className="overflow-auto scroll-smooth max-h-[70vh]">
@@ -466,6 +605,9 @@ const InvoiceTable: React.FC = () => {
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Date
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                GL Code
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Cost Center
@@ -485,7 +627,7 @@ const InvoiceTable: React.FC = () => {
             </tr>
           </thead>
           <tbody className="w-full">
-            {invoices.map((invoice) => (
+            {searchFilteredInvoices.map((invoice) => (
               <tr key={invoice.invoiceId} className="text-[#252525]">
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.number}
@@ -495,6 +637,9 @@ const InvoiceTable: React.FC = () => {
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.date}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.glCode}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.costCenter}
@@ -549,23 +694,13 @@ const InvoiceTable: React.FC = () => {
               />
             </div>
             <div>
-              <select
+              <SearchableDropdown
                 name="glCode"
-                className="w-full border rounded p-2 bg-white"
+                options={glCodes.length > 0 ? glCodes : ["N/A"]}
                 value={formData.glCode}
                 onChange={handleChange}
-                required
-              >
-                <option value="">Select GL Code</option>
-                {(glCodes.length > 0
-                  ? glCodes
-                  : ["GL001", "GL002", "GL003"]
-                ).map((code, index) => (
-                  <option key={index} value={code}>
-                    {code}
-                  </option>
-                ))}
-              </select>
+                placeholder="Select GL Code"
+              />
             </div>
             <div>
               <input
@@ -579,22 +714,13 @@ const InvoiceTable: React.FC = () => {
               />
             </div>
             <div>
-              <select
+              <SearchableDropdown
                 name="costCenter"
-                className="w-full border rounded p-2 bg-white"
+                options={costCenters.length > 0 ? costCenters : ["N/A"]}
                 value={formData.costCenter}
                 onChange={handleChange}
-                required
-              >
-                <option value="">Select Cost Center</option>
-                {(costCenters.length > 0 ? costCenters : ["N/A"]).map(
-                  (center, index) => (
-                    <option key={index} value={center}>
-                      {center}
-                    </option>
-                  )
-                )}
-              </select>
+                placeholder="Select Cost Center"
+              />
             </div>
 
             <div>
@@ -634,23 +760,14 @@ const InvoiceTable: React.FC = () => {
           <div className="mt-12 grid grid-cols-2 md:grid-cols-6 gap-4">
             <div className="col-span-2">
               <label className="text-gray-500">Company name</label>
-              <select
+              <SearchableDropdown
                 name="companyName"
-                className="w-full border rounded p-2 mt-1 bg-white"
+                options={vendors.length > 0 ? vendors : ["N/A"]}
                 value={formData.companyName}
                 onChange={handleChange}
+                placeholder="Select Vendor"
                 required
-              >
-                <option value="">Select Vendor</option>
-                {(vendors.length > 0
-                  ? vendors
-                  : ["Vendor A", "Vendor B", "Vendor C"]
-                ).map((vendor, index) => (
-                  <option key={index} value={vendor}>
-                    {vendor}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="text-gray-500">Base Amount</label>
