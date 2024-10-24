@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
-import { FaDownload, FaFilter } from "react-icons/fa";
+import {
+  FaFilter,
+  FaEdit,
+  FaDownload,
+  FaCheck,
+  FaTimes,
+  FaClock,
+} from "react-icons/fa";
 import Modal from "react-modal";
 import axios from "axios";
-
+import { Search } from "lucide-react";
 interface Reimbursement {
   userId: string;
   reimbursementId: string;
@@ -61,12 +68,19 @@ const customStyles = {
 
 const AdminReimbursementTable: React.FC = () => {
   const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
+  const [filteredReimbursements, setFilteredReimbursements] = useState<
+    Reimbursement[]
+  >([]);
+  const [searchedFilteredReimbursements, setSearchedFilteredReimbursements] =
+    useState<Reimbursement[]>(filteredReimbursements);
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [selectedReimbursement, setSelectedReimbursement] = useState<
     Reimbursement | undefined
   >(undefined);
+  const [searchTerm, setSearchTerm] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [showPopup, setShowPopup] = useState(false);
   const [costCenters, setCostCenters] = useState<string[]>([]);
   const [vendors, setVendors] = useState<string[]>([]);
@@ -81,29 +95,55 @@ const AdminReimbursementTable: React.FC = () => {
     fetchReimbursements();
     fetchAdditionalData();
   }, []);
+  useEffect(() => {
+    const newSearchedFilteredReimbursements = filteredReimbursements.filter(
+      (reimbursement) =>
+        reimbursement.glCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        reimbursement.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setSearchedFilteredReimbursements(newSearchedFilteredReimbursements);
+  }, [searchTerm, filteredReimbursements]);
 
   const handleFilter = () => {
-    if (!fromDate || !toDate || fromDate === "" || toDate === "") return;
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
+    let filtered: Reimbursement[] = reimbursements;
 
-    // Filter invoices based on date range
-    const filtered = reimbursements.filter((r) => {
-      const date = new Date(r.date);
-      return date >= from && date <= to;
-    });
+    if (
+      (statusFilter === "" || statusFilter === "Select Status") &&
+      (fromDate === "" || toDate === "")
+    ) {
+      setShowPopup(false);
+      return;
+    }
 
-    setReimbursements(filtered);
+    if (fromDate !== "" && toDate !== "") {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+
+      // Filter invoices based on date range
+      filtered = filtered.filter((reimbursement) => {
+        const reimbursementDate = new Date(reimbursement.date);
+        return reimbursementDate >= from && reimbursementDate <= to;
+      });
+    }
+
+    if (statusFilter !== "" && statusFilter !== "Select Status") {
+      filtered = filtered.filter(
+        (reimbursement) => reimbursement.status === statusFilter
+      );
+    }
+
+    setFilteredReimbursements(filtered);
+    setShowPopup(false);
+  };
+  const handleClearFilter = () => {
+    setFilteredReimbursements(reimbursements);
+    setFromDate("");
+    setToDate("");
+    setStatusFilter("");
     setShowPopup(false);
   };
   const togglePopup = () => {
     setShowPopup(!showPopup);
-  };
-  const handleClearFilter = () => {
-    fetchReimbursements(); // Reset to original invoices
-    setFromDate(""); // Clear the date fields
-    setToDate("");
-    setShowPopup(false); // Close the popup
   };
 
   const fetchReimbursements = async () => {
@@ -114,6 +154,7 @@ const AdminReimbursementTable: React.FC = () => {
       }
       const data: Reimbursement[] = await response.json();
       setReimbursements(data);
+      setFilteredReimbursements(data);
     } catch (error) {
       console.error("Error fetching reimbursements:", error);
     }
@@ -285,7 +326,7 @@ const AdminReimbursementTable: React.FC = () => {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="border bg-transparent text-black rounded p-2"
+                    className="border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
                   />
                 </div>
                 <div className="flex space-x-2 items-center">
@@ -297,7 +338,7 @@ const AdminReimbursementTable: React.FC = () => {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="border bg-transparent text-black rounded p-2"
+                    className="border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
                   />
                 </div>
                 <button
@@ -307,6 +348,16 @@ const AdminReimbursementTable: React.FC = () => {
                   Download as Excel
                 </button>
               </div>
+            </div>
+            <div className="w-auto relative inline-flex">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by GL Code or Name"
+                className="w-80 bg-white border border-black text-black pl-9 pr-2 py-1 rounded-xl"
+              />
             </div>
             <div className="w-auto relative inline-block">
               <button
@@ -324,7 +375,7 @@ const AdminReimbursementTable: React.FC = () => {
                     type="date"
                     value={fromDate}
                     onChange={(e) => setFromDate(e.target.value)}
-                    className="border bg-transparent text-black rounded p-2"
+                    className="border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
                   />
 
                   <label className="block text-sm font-bold mb-2 text-black mt-2">
@@ -334,8 +385,25 @@ const AdminReimbursementTable: React.FC = () => {
                     type="date"
                     value={toDate}
                     onChange={(e) => setToDate(e.target.value)}
-                    className="border bg-transparent text-black rounded p-2"
+                    className="border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
                   />
+
+                  <label className="block text-sm font-bold mb-2 text-black mt-2">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    className="w-full border rounded p-2 bg-white text-black "
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="">Select Status</option>
+                    {["PENDING", "APPROVED", "REJECTED"].map((type, index) => (
+                      <option key={index} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
 
                   <div className="flex justify-between gap-2 mt-2">
                     <button
@@ -400,7 +468,7 @@ const AdminReimbursementTable: React.FC = () => {
               </tr>
             </thead>
             <tbody className="w-full">
-              {reimbursements.map((reimbursement, index) => {
+              {searchedFilteredReimbursements.map((reimbursement, index) => {
                 const amountColor =
                   reimbursement.amount > 0 ? "text-green-500" : "text-red-500";
                 return (
@@ -422,15 +490,30 @@ const AdminReimbursementTable: React.FC = () => {
                     <td className="py-2 px-4 text-start border-b">
                       {reimbursement.costCenter}
                     </td>
-                    <td className="py-2 px-4 text-start border-b">
-                      {reimbursement.status}
+                    <td className="py-2 px-4 text-center border-b">
+                      <div
+                        className={`w-fit rounded-full px-2 ${
+                          reimbursement.status === "APPROVED"
+                            ? "bg-[#636C59] text-white"
+                            : "bg-[#D7E6C5]"
+                        }`}
+                      >
+                        {reimbursement.status === "APPROVED" ? (
+                          <FaCheck />
+                        ) : reimbursement.status === "PENDING" ? (
+                          <FaClock />
+                        ) : (
+                          <FaTimes />
+                        )}
+                      </div>
                     </td>
                     <td className="py-2 px-4 text-start border-b">
                       <button
                         onClick={() => openModal(reimbursement)}
-                        className="bg-yellow-500 text-white px-3 py-1 rounded flex items-center"
+                        className="bg-red-400 text-white px-3 py-1 rounded flex items-center"
                       >
                         Edit
+                        <FaEdit className="ml-1" />
                       </button>
                     </td>
                   </tr>
@@ -496,7 +579,7 @@ const AdminReimbursementTable: React.FC = () => {
             name="date"
             value={selectedReimbursement?.date || ""}
             onChange={handleInputChange}
-            className="border bg-transparent rounded p-2 w-full"
+            className="border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
           />
           <input
             type="number"

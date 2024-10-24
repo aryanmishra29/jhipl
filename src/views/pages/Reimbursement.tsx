@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { FaPlus } from "react-icons/fa";
+import { FaPlus, FaCheck, FaTimes, FaClock, FaFilter } from "react-icons/fa";
 import Modal from "react-modal";
 import axios from "axios";
+import { Search } from "lucide-react";
+import SearchableDropdown from "../../components/SearchableDropdown.tsx";
 
 interface Reimbursement {
   reimbursementId: string;
@@ -45,6 +47,8 @@ const customStyles = {
 
 const ReimbursementTable: React.FC = () => {
   const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
+  const [filteredReimbursements, setFilteredReimbursements] = useState<Reimbursement[]>([]);
+  const [searchedFilteredReimbursements, setSearchedFilteredReimbursements] = useState<Reimbursement[]>(filteredReimbursements);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     nameOfEmployee: "",
@@ -65,9 +69,24 @@ const ReimbursementTable: React.FC = () => {
   const [vendors, setVendors] = useState<string[]>([]);
   const [glCodes, setGlCodes] = useState<string[]>([]);
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
+
   const baseUrl = "https://jhipl.grobird.in";
   const user_id = localStorage.getItem("userId") || "";
   console.log();
+
+  useEffect(() => {
+    const newSearchedFilteredReimbursements = filteredReimbursements.filter(
+      (reimbursement) =>
+        reimbursement.glCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        reimbursement.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setSearchedFilteredReimbursements(newSearchedFilteredReimbursements);
+  }, [searchTerm, filteredReimbursements]);
 
   // Fetch data from APIs
   useEffect(() => {
@@ -91,6 +110,44 @@ const ReimbursementTable: React.FC = () => {
     fetchData();
   }, []);
 
+  const handleFilter = () => {
+    let filtered: Reimbursement[] = reimbursements;
+
+    if (
+      (statusFilter === "" || statusFilter === "Select Status") &&
+      (fromDate === "" || toDate === "")
+    ) {
+      setShowPopup(false);
+      return;
+    }
+
+    if (fromDate !== "" && toDate !== "") {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+
+      // Filter invoices based on date range
+      filtered = filtered.filter((reimbursement) => {
+        const reimbursementDate = new Date(reimbursement.date);
+        return reimbursementDate >= from && reimbursementDate <= to;
+      });
+    }
+
+    if (statusFilter !== "" && statusFilter !== "Select Status") {
+      filtered = filtered.filter((reimbursement) => reimbursement.status === statusFilter);
+    }
+
+    setFilteredReimbursements(filtered);
+    setShowPopup(false);
+  };
+  const handleClearFilter = () => {
+    setFilteredReimbursements(reimbursements);
+    setFromDate("");
+    setToDate("");
+    setStatusFilter("");
+    setShowPopup(false);
+  };
+  const togglePopup = () => { setShowPopup(!showPopup); };
+
   // Fetch reimbursements
   const fetchReimbursements = async () => {
     try {
@@ -101,6 +158,7 @@ const ReimbursementTable: React.FC = () => {
       }
       const data: Reimbursement[] = await response.json();
       setReimbursements(data);
+      setFilteredReimbursements(data);
     } catch (error) {
       console.error("Error fetching reimbursements:", error);
     }
@@ -117,7 +175,7 @@ const ReimbursementTable: React.FC = () => {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | any>
   ) => {
-    const files = e.currentTarget.files;
+    const files = (e.target as HTMLInputElement).files;
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -167,7 +225,6 @@ const ReimbursementTable: React.FC = () => {
           "Content-Type": "multipart/form-data",
         },
       });
-      await new Promise((resolve) => setTimeout(resolve, 5000));
 
       await fetchReimbursements();
       closeModal();
@@ -191,6 +248,79 @@ const ReimbursementTable: React.FC = () => {
               <FaPlus className="mr-2" /> New reimbursement
             </button>
           </div>
+          <div className="w-auto relative inline-flex">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by GL Code or Name"
+              className="w-80 bg-white border border-black text-black pl-9 pr-2 py-1 rounded-xl"
+            />
+          </div>
+          <div className="w-auto relative inline-block">
+            <button
+              onClick={togglePopup}
+              className="w-full md:w-auto bg-[#636C59] text-white px-6 font-bold py-1.5 rounded-xl flex items-center justify-center"
+            >
+              Filter <FaFilter className="ml-2" />
+            </button>
+            {showPopup && (
+              <div className="absolute z-20 top-full mt-2 right-0 bg-white shadow-2xl rounded-lg p-4">
+                <label className="block text-sm font-bold mb-2 text-black">
+                  From Date:
+                </label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
+                />
+
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  To Date:
+                </label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
+                />
+
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  className="w-full border rounded p-2 bg-white text-black "
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="">Select Status</option>
+                  {["PENDING", "APPROVED", "REJECTED"].map((type, index) => (
+                    <option key={index} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="flex justify-between gap-2 mt-2">
+                  <button
+                    onClick={handleFilter}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-md"
+                  >
+                    Apply
+                  </button>
+                  <button
+                    onClick={handleClearFilter}
+                    className="bg-gray-500 text-white px-4 py-2 rounded-md"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {/* table */}
@@ -202,7 +332,13 @@ const ReimbursementTable: React.FC = () => {
                 Date
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Name of Employee
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Amount
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                GL Code
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 UTR No.
@@ -211,15 +347,12 @@ const ReimbursementTable: React.FC = () => {
                 Cost Center
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                Name of Employee
-              </th>
-              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Status
               </th>
             </tr>
           </thead>
           <tbody className="w-full">
-            {reimbursements.map((reimbursement) => {
+            {searchedFilteredReimbursements.map((reimbursement) => {
               const amountColor =
                 reimbursement.amount > 0 ? "text-green-500" : "text-red-500";
               return (
@@ -230,29 +363,36 @@ const ReimbursementTable: React.FC = () => {
                   <td className="py-2 px-4 text-start border-b">
                     {reimbursement.date}
                   </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {reimbursement.name}
+                  </td>
                   <td
                     className={`py-2 px-4 text-start border-b ${amountColor}`}
                   >{`${reimbursement.amount.toFixed(2)}`}</td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {reimbursement.glCode}
+                  </td>
                   <td className="py-2 px-4 text-start border-b">
                     {reimbursement.utrNo}
                   </td>
                   <td className="py-2 px-4 text-start border-b">
                     {reimbursement.costCenter}
                   </td>
-                  <td className="py-2 px-4 text-start border-b">
-                    {reimbursement.name}
-                  </td>
                   <td className="py-2 px-4 text-center border-b">
                     <div
                       className={`w-fit rounded-full px-2 ${
                         reimbursement.status === "APPROVED"
                           ? "bg-[#636C59] text-white"
-                          : reimbursement.status === "PENDING"
-                          ? "bg-[#FEC400] text-[#252525]"
-                          : "bg-[#E7E7E7] text-[#C2C2C2]"
-                      } py-1`}
+                          : "bg-[#D7E6C5]"
+                      }`}
                     >
-                      {reimbursement.status}
+                      {reimbursement.status === "APPROVED" ? (
+                        <FaCheck />
+                      ) : reimbursement.status === "PENDING" ? (
+                        <FaClock />
+                      ) : (
+                        <FaTimes />
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -272,61 +412,34 @@ const ReimbursementTable: React.FC = () => {
         <h2 className="text-2xl font-bold mb-4">Add New Reimbursement</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
-            <select
+            <SearchableDropdown
               name="nameOfEmployee"
-              className="w-full border rounded p-2 bg-white"
+              options={vendors.length > 0 ? vendors : ["N/A"]}
               value={formData.nameOfEmployee}
               onChange={handleChange}
-              required
-            >
-              <option value="">Select Vendor (Employee Name)</option>
-              {(Array.isArray(vendors)
-                ? vendors
-                : ["Dummy Vendor 1", "Dummy Vendor 2"]
-              ).map((vendor, index) => (
-                <option key={index} value={vendor}>
-                  {vendor}
-                </option>
-              ))}
-            </select>
-            <select
+              placeholder="Select Employee Name"
+              required={true}
+            />
+            <SearchableDropdown
               name="glCode"
-              className="w-full border rounded p-2 bg-white"
+              options={glCodes.length > 0 ? glCodes : ["N/A"]}
               value={formData.glCode}
               onChange={handleChange}
-              required
-            >
-              <option value="">Select GL Code</option>
-              {(Array.isArray(glCodes)
-                ? glCodes
-                : ["Dummy GL Code 1", "Dummy GL Code 2"]
-              ).map((code, index) => (
-                <option key={index} value={code}>
-                  {code}
-                </option>
-              ))}
-            </select>
-            <select
+              placeholder="Select GL Code"
+              required={true}
+            />
+            <SearchableDropdown
               name="costCenter"
-              className="w-full border rounded p-2 bg-white"
+              options={costCenters.length > 0 ? costCenters : ["N/A"]}
               value={formData.costCenter}
               onChange={handleChange}
-              required
-            >
-              <option value="">Select Cost Center</option>
-              {(Array.isArray(costCenters)
-                ? costCenters
-                : ["Dummy Cost Center 1", "Dummy Cost Center 2"]
-              ).map((center, index) => (
-                <option key={index} value={center}>
-                  {center}
-                </option>
-              ))}
-            </select>
+              placeholder="Select Cost Center"
+              required={true}
+            />
             <input
               type="date"
               name="date"
-              className="w-full border rounded p-2 bg-white"
+              className="w-full border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
               value={formData.date}
               onChange={handleChange}
               required

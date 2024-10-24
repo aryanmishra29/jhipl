@@ -574,7 +574,7 @@ const AdminInvoiceTable: React.FC = () => {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="border bg-transparent text-black rounded p-2"
+                  className="border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
                 />
               </div>
               <div className="flex space-x-2 items-center">
@@ -586,7 +586,7 @@ const AdminInvoiceTable: React.FC = () => {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="border bg-transparent text-black rounded p-2"
+                  className="border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
                 />
               </div>
               <button
@@ -623,7 +623,7 @@ const AdminInvoiceTable: React.FC = () => {
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="border bg-transparent text-black rounded p-2"
+                  className="border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
                 />
 
                 <label className="block text-sm font-bold mb-2 text-black mt-2">
@@ -633,7 +633,7 @@ const AdminInvoiceTable: React.FC = () => {
                   type="date"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
-                  className="border bg-transparent text-black rounded p-2"
+                  className="border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
                 />
 
                 <label className="block text-sm font-bold mb-2 text-black mt-2">
@@ -822,7 +822,7 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="date"
                   name="invoiceDate"
-                  className="w-full border rounded p-2 bg-white "
+                  className="w-full border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
                   value={formData.invoiceDate}
                   onChange={handleChange}
                   required
