@@ -13,7 +13,7 @@ interface Invoice {
   vendor: string;
   date: string;
   costCenter: string;
-  glCode:string;
+  glCode: string;
   gst: string;
   finalAmount: number;
   status: string;
@@ -83,6 +83,12 @@ const InvoiceTable: React.FC = () => {
     sgstAmount: "0",
     cgst: "0",
     cgstAmount: "0",
+    igst2: "0",
+    igstAmount2: "0",
+    sgst2: "0",
+    sgstAmount2: "0",
+    cgst2: "0",
+    cgstAmount2: "0",
     total: "",
     glCode: "",
     costCenter: "",
@@ -117,7 +123,6 @@ const InvoiceTable: React.FC = () => {
     );
     setSearchFilteredInvoices(newSearchFilteredInvoices);
   }, [searchTerm, filteredInvoices]);
-
 
   useEffect(() => {
     const fetchDropdownData = async () => {
@@ -201,7 +206,13 @@ const InvoiceTable: React.FC = () => {
         date: invoice.date,
         costCenter: invoice.costCenter,
         glCode: invoice.glCode,
-        gst: invoice.sgstAmount + invoice.igstAmount + invoice.cgstAmount,
+        gst:
+          invoice.sgstAmount +
+          invoice.igstAmount +
+          invoice.cgstAmount +
+          invoice.igstAmount2 +
+          invoice.sgstAmount2 +
+          invoice.cgstAmount2,
         finalAmount: invoice.finalAmount,
         status: invoice.status,
         utrNo: invoice.utrNo,
@@ -224,46 +235,46 @@ const InvoiceTable: React.FC = () => {
   const closeModal = () => {
     setIsModalOpen(false);
   };
-   const handleFilter = () => {
-     let filtered: Invoice[] = invoices;
+  const handleFilter = () => {
+    let filtered: Invoice[] = invoices;
 
-     if (
-       (statusFilter === "" || statusFilter === "Select Status") &&
-       (fromDate === "" || toDate === "")
-     ) {
-       setShowPopup(false);
-       return;
-     }
+    if (
+      (statusFilter === "" || statusFilter === "Select Status") &&
+      (fromDate === "" || toDate === "")
+    ) {
+      setShowPopup(false);
+      return;
+    }
 
-     if (fromDate !== "" && toDate !== "") {
-       const from = new Date(fromDate);
-       const to = new Date(toDate);
+    if (fromDate !== "" && toDate !== "") {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
 
-       // Filter invoices based on date range
-       filtered = filtered.filter((invoice) => {
-         const invoiceDate = new Date(invoice.date);
-         return invoiceDate >= from && invoiceDate <= to;
-       });
-     }
+      // Filter invoices based on date range
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.date);
+        return invoiceDate >= from && invoiceDate <= to;
+      });
+    }
 
-     if (statusFilter !== "" && statusFilter !== "Select Status") {
-       filtered = filtered.filter((invoice) => invoice.status === statusFilter);
-     }
+    if (statusFilter !== "" && statusFilter !== "Select Status") {
+      filtered = filtered.filter((invoice) => invoice.status === statusFilter);
+    }
 
-     setFilteredInvoices(filtered);
-     setShowPopup(false);
-   };
+    setFilteredInvoices(filtered);
+    setShowPopup(false);
+  };
 
-   const togglePopup = () => {
-     setShowPopup(!showPopup);
-   };
-   const handleClearFilter = () =>{
-     setFilteredInvoices(invoices); // Reset to original invoices
-     setFromDate(""); // Clear the date fields
-     setToDate("");
-     setStatusFilter(""); // Clear the status filter
-     setShowPopup(false); // Close the popup
-   };
+  const togglePopup = () => {
+    setShowPopup(!showPopup);
+  };
+  const handleClearFilter = () => {
+    setFilteredInvoices(invoices); // Reset to original invoices
+    setFromDate(""); // Clear the date fields
+    setToDate("");
+    setStatusFilter(""); // Clear the status filter
+    setShowPopup(false); // Close the popup
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | any>
@@ -321,7 +332,13 @@ const InvoiceTable: React.FC = () => {
         sgstAmount: "0",
         cgstAmount: "0",
         igstAmount: igstAmount,
-        total: (baseAmount + parseFloat(igstAmount)).toFixed(4),
+        total: (
+          baseAmount +
+          parseFloat(igstAmount) +
+          parseFloat(formData.igstAmount2) +
+          parseFloat(formData.cgstAmount2) +
+          parseFloat(formData.sgstAmount2)
+        ).toFixed(4),
       }));
     } else if (name === "sgst") {
       const sgstPercentage = parseTax(value) / 100;
@@ -335,7 +352,14 @@ const InvoiceTable: React.FC = () => {
         sgstAmount: sgstAmount,
         igst: "0",
         igstAmount: "0",
-        total: (baseAmount + parseFloat(sgstAmount) + cgstAmount).toFixed(4),
+        total: (
+          baseAmount +
+          parseFloat(sgstAmount) +
+          cgstAmount +
+          parseFloat(formData.igstAmount2) +
+          parseFloat(formData.cgstAmount2) +
+          parseFloat(formData.sgstAmount2)
+        ).toFixed(4),
       }));
     } else if (name === "cgst") {
       const cgstPercentage = parseTax(value) / 100;
@@ -349,7 +373,14 @@ const InvoiceTable: React.FC = () => {
         igst: "0",
         igstAmount: "0",
         cgstAmount: cgstAmount,
-        total: (baseAmount + parseFloat(cgstAmount) + sgstAmount).toFixed(4),
+        total: (
+          baseAmount +
+          parseFloat(cgstAmount) +
+          sgstAmount +
+          parseFloat(formData.igstAmount2) +
+          parseFloat(formData.cgstAmount2) +
+          parseFloat(formData.sgstAmount2)
+        ).toFixed(4),
       }));
     } else if (name === "baseAmount") {
       const baseAmount = parseFloat(value);
@@ -359,6 +390,12 @@ const InvoiceTable: React.FC = () => {
       const sgstAmount = (baseAmount * sgstPercentage).toFixed(4);
       const cgstPercentage = parseTax(formData.cgst) / 100;
       const cgstAmount = (baseAmount * cgstPercentage).toFixed(4);
+      const igstPercentage2 = parseTax(formData.igst2) / 100;
+      const igstAmount2 = (baseAmount * igstPercentage2).toFixed(4);
+      const sgstPercentage2 = parseTax(formData.sgst2) / 100;
+      const sgstAmount2 = (baseAmount * sgstPercentage2).toFixed(4);
+      const cgstPercentage2 = parseTax(formData.cgst2) / 100;
+      const cgstAmount2 = (baseAmount * cgstPercentage2).toFixed(4);
 
       setFormData((prev) => ({
         ...prev,
@@ -366,11 +403,17 @@ const InvoiceTable: React.FC = () => {
         igstAmount: igstAmount,
         sgstAmount: sgstAmount,
         cgstAmount: cgstAmount,
+        igstAmount2: igstAmount2,
+        sgstAmount2: sgstAmount2,
+        cgstAmount2: cgstAmount2,
         total: (
           baseAmount +
           parseFloat(igstAmount) +
           parseFloat(sgstAmount) +
-          parseFloat(cgstAmount)
+          parseFloat(cgstAmount) +
+          parseFloat(igstAmount2) +
+          parseFloat(sgstAmount2) +
+          parseFloat(cgstAmount2)
         ).toFixed(4),
       }));
     } else if (name === "igstAmount") {
@@ -381,7 +424,13 @@ const InvoiceTable: React.FC = () => {
         igstAmount: value,
         sgstAmount: "0",
         cgstAmount: "0",
-        total: (parseFloat(formData.baseAmount) + igstAmount).toFixed(4),
+        total: (
+          parseFloat(formData.baseAmount) +
+          igstAmount +
+          parseFloat(formData.igstAmount2) +
+          parseFloat(formData.cgstAmount2) +
+          parseFloat(formData.sgstAmount2)
+        ).toFixed(4),
       }));
     } else if (name === "sgstAmount") {
       const sgstAmount = parseFloat(value);
@@ -394,7 +443,10 @@ const InvoiceTable: React.FC = () => {
         total: (
           parseFloat(formData.baseAmount) +
           sgstAmount +
-          cgstAmount
+          cgstAmount +
+          parseFloat(formData.igstAmount2) +
+          parseFloat(formData.cgstAmount2) +
+          parseFloat(formData.sgstAmount2)
         ).toFixed(4),
       }));
     } else if (name === "cgstAmount") {
@@ -408,13 +460,129 @@ const InvoiceTable: React.FC = () => {
         total: (
           parseFloat(formData.baseAmount) +
           cgstAmount +
-          sgstAmount
+          sgstAmount +
+          parseFloat(formData.igstAmount2) +
+          parseFloat(formData.cgstAmount2) +
+          parseFloat(formData.sgstAmount2)
+        ).toFixed(4),
+      }));
+    } else if (name === "igst2") {
+      const igstPercentage2 = parseTax(value) / 100;
+      const baseAmount = parseFloat(formData.baseAmount);
+      const igstAmount2 = (baseAmount * igstPercentage2).toFixed(4);
+
+      setFormData((prev) => ({
+        ...prev,
+        igst2: value,
+        sgst2: "0",
+        cgst2: "0",
+        sgstAmount2: "0",
+        cgstAmount2: "0",
+        igstAmount2: igstAmount2,
+        total: (
+          baseAmount +
+          parseFloat(igstAmount2) +
+          parseFloat(formData.igstAmount) +
+          parseFloat(formData.cgstAmount) +
+          parseFloat(formData.sgstAmount)
+        ).toFixed(4),
+      }));
+    } else if (name === "sgst2") {
+      const sgstPercentage2 = parseTax(value) / 100;
+      const baseAmount = parseFloat(formData.baseAmount);
+      const sgstAmount2 = (baseAmount * sgstPercentage2).toFixed(4);
+      const cgstAmount2 = parseFloat(formData.cgstAmount2);
+
+      setFormData((prev) => ({
+        ...prev,
+        sgst2: value,
+        sgstAmount2: sgstAmount2,
+        igst2: "0",
+        igstAmount2: "0",
+        total: (
+          baseAmount +
+          parseFloat(sgstAmount2) +
+          cgstAmount2 +
+          parseFloat(formData.igstAmount) +
+          parseFloat(formData.cgstAmount) +
+          parseFloat(formData.sgstAmount)
+        ).toFixed(4),
+      }));
+    } else if (name === "cgst2") {
+      const cgstPercentage2 = parseTax(value) / 100;
+      const baseAmount = parseFloat(formData.baseAmount);
+      const cgstAmount2 = (baseAmount * cgstPercentage2).toFixed(4);
+      const sgstAmount2 = parseFloat(formData.sgstAmount2);
+
+      setFormData((prev) => ({
+        ...prev,
+        cgst2: value,
+        igst2: "0",
+        igstAmount2: "0",
+        cgstAmount2: cgstAmount2,
+        total: (
+          baseAmount +
+          parseFloat(cgstAmount2) +
+          sgstAmount2 +
+          parseFloat(formData.igstAmount) +
+          parseFloat(formData.cgstAmount) +
+          parseFloat(formData.sgstAmount)
+        ).toFixed(4),
+      }));
+    } else if (name === "igstAmount2") {
+      const igstAmount2 = parseFloat(value);
+
+      setFormData((prev) => ({
+        ...prev,
+        igstAmount2: value,
+        sgstAmount2: "0",
+        cgstAmount2: "0",
+        total: (
+          parseFloat(formData.baseAmount) +
+          igstAmount2 +
+          parseFloat(formData.igstAmount) +
+          parseFloat(formData.cgstAmount) +
+          parseFloat(formData.sgstAmount)
+        ).toFixed(4),
+      }));
+    } else if (name === "sgstAmount2") {
+      const sgstAmount2 = parseFloat(value);
+      const cgstAmount2 = parseFloat(formData.cgstAmount2);
+
+      setFormData((prev) => ({
+        ...prev,
+        sgstAmount2: value,
+        igstAmount2: "0",
+        total: (
+          parseFloat(formData.baseAmount) +
+          sgstAmount2 +
+          cgstAmount2 +
+          parseFloat(formData.igstAmount) +
+          parseFloat(formData.cgstAmount) +
+          parseFloat(formData.sgstAmount)
+        ).toFixed(4),
+      }));
+    } else if (name === "cgstAmount2") {
+      const cgstAmount2 = parseFloat(value);
+      const sgstAmount2 = parseFloat(formData.sgstAmount2);
+
+      setFormData((prev) => ({
+        ...prev,
+        cgstAmount2: value,
+        igstAmount2: "0",
+        total: (
+          parseFloat(formData.baseAmount) +
+          cgstAmount2 +
+          sgstAmount2 +
+          parseFloat(formData.igstAmount) +
+          parseFloat(formData.cgstAmount) +
+          parseFloat(formData.sgstAmount)
         ).toFixed(4),
       }));
     } else {
       setFormData((prev) => ({
         ...prev,
-        [name]: (files && files.length>0) ? files[0] : value,
+        [name]: files && files.length > 0 ? files[0] : value,
       }));
     }
   };
@@ -436,6 +604,12 @@ const InvoiceTable: React.FC = () => {
       sgstAmount,
       cgst,
       cgstAmount,
+      igst2,
+      igstAmount2,
+      sgst2,
+      sgstAmount2,
+      cgst2,
+      cgstAmount2,
       total,
       glCode,
       costCenter,
@@ -483,6 +657,12 @@ const InvoiceTable: React.FC = () => {
     formDataToSubmit.append("cgstAmount", cgstAmount);
     formDataToSubmit.append("igst", igst);
     formDataToSubmit.append("igstAmount", igstAmount);
+    formDataToSubmit.append("sgst2", sgst2);
+    formDataToSubmit.append("sgstAmount2", sgstAmount2);
+    formDataToSubmit.append("cgst2", cgst2);
+    formDataToSubmit.append("cgstAmount2", cgstAmount2);
+    formDataToSubmit.append("igst2", igst2);
+    formDataToSubmit.append("igstAmount2", igstAmount2);
     formDataToSubmit.append("description", description);
     formDataToSubmit.append("paymentType", paymentType);
     if (receipt) formDataToSubmit.append("receipts", receipt);
@@ -780,6 +960,9 @@ const InvoiceTable: React.FC = () => {
                 required
               />
             </div>
+            <div></div>
+            <div></div>
+            <div></div>
             <div>
               <label className="text-gray-500">IGST</label>
               <select
@@ -870,6 +1053,101 @@ const InvoiceTable: React.FC = () => {
                 name="cgstAmount"
                 className="w-full border rounded p-2 mt-1 bg-white"
                 value={formData.cgstAmount}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-gray-500">IGST 2</label>
+              <select
+                name="igst2"
+                className="w-full border rounded p-2 mt-1 bg-white"
+                value={formData.igst2}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select IGST 2</option>
+                {(igsts.length > 0
+                  ? igsts
+                  : ["IGST 5%", "IGST 12%", "IGST 18%", "IGST 28%"]
+                ).map((gst, index) => (
+                  <option key={index} value={gst}>
+                    {gst}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-gray-500">IGST Amount 2</label>
+              <input
+                type="number"
+                name="igstAmount2"
+                className="w-full border rounded p-2 mt-1 bg-white"
+                value={formData.igstAmount2}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-gray-500">SGST 2</label>
+              <select
+                name="sgst2"
+                className="w-full border rounded p-2 mt-1 bg-white"
+                value={formData.sgst2}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select SGST 2</option>
+                {(sgsts.length > 0
+                  ? sgsts
+                  : ["SGST 5%", "SGST 12%", "SGST 18%", "SGST 28%"]
+                ).map((gst, index) => (
+                  <option key={index} value={gst}>
+                    {gst}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-gray-500">SGST Amount 2</label>
+              <input
+                type="number"
+                name="sgstAmount2"
+                className="w-full border rounded p-2 mt-1 bg-white"
+                value={formData.sgstAmount2}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-gray-500">CGST 2</label>
+              <select
+                name="cgst2"
+                className="w-full border rounded p-2 mt-1 bg-white"
+                value={formData.cgst2}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select CGST 2</option>
+                {(cgsts.length > 0
+                  ? cgsts
+                  : ["CGST 5%", "CGST 12%", "CGST 18%", "CGST 28%"]
+                ).map((gst, index) => (
+                  <option key={index} value={gst}>
+                    {gst}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-gray-500">CGST Amount 2</label>
+              <input
+                type="number"
+                name="cgstAmount2"
+                className="w-full border rounded p-2 mt-1 bg-white"
+                value={formData.cgstAmount2}
                 onChange={handleChange}
                 required
               />

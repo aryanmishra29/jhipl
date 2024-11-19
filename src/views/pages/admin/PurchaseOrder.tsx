@@ -65,6 +65,7 @@ const PurchaseOrder: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vendors, setVendors] = useState<string[]>([]);
   const baseUrl = "https://jhipl.grobird.in";
+  // const baseUrl = "http://localhost:8080";
   const [filesData, setFilesData] = useState<any[]>([]);
   const [cgsts, setCgsts] = useState<string[]>([]);
   const [sgsts, setSgsts] = useState<string[]>([]);
@@ -112,10 +113,11 @@ const PurchaseOrder: React.FC = () => {
     }
     const mappedData = response.data.map((item: any) => ({
       poRequestId: item.poRequestId,
+      comments: item.comments,
     }));
 
     setFilesData(mappedData);
-    console.log(filesData);
+    console.log(mappedData);
   };
   const fetchPurchaseOrders = async () => {
     try {
@@ -448,6 +450,9 @@ const PurchaseOrder: React.FC = () => {
                   Quotation 3
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Comments
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Action
                 </th>
               </tr>
@@ -520,7 +525,10 @@ const PurchaseOrder: React.FC = () => {
                       </div>
                     </button>
                   </td>
-                  <td className="py-2 px-4 text-start flex  border-b">
+                  <td className="py-2 px-4 text-start border-b">
+                    {file.comments}
+                  </td>
+                  <td className="py-2 px-4 text-start flex border-b items-center h-full">
                     <button
                       className="px-4 flex gap-1 items-center py-2 bg-green-500 text-white rounded-md"
                       onClick={() => handleAccept(file.poRequestId)}

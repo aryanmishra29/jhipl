@@ -38,9 +38,11 @@ const Purchase: React.FC = () => {
     quotation1: null as File | null,
     quotation2: null as File | null,
     quotation3: null as File | null,
+    comments: ""
   });
 
   const baseUrl = "https://jhipl.grobird.in";
+  // const baseUrl = "http://localhost:8080";
   const user_id = localStorage.getItem("userId") || "";
 
   const fetchPurchaseOrders = async () => {
@@ -67,16 +69,28 @@ const Purchase: React.FC = () => {
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setFormData({
+      requisitionForm: null,
+      comparativeForm: null,
+      quotation1: null,
+      quotation2: null,
+      quotation3: null,
+      comments: ""
+    });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, files } = e.target;
-    if (files && files[0]) {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: files[0],
-      }));
-    }
+  const handleFileChange = (
+    e:
+      | React.ChangeEvent<HTMLTextAreaElement>
+      | React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const { name, value } = e.target;
+    const files = (e.target as HTMLInputElement).files;
+    setFormData((prev) => ({
+      ...prev,
+      comments: name === "comments" ? value : prev.comments,
+      [name]: files ? files[0] : value,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,6 +113,7 @@ const Purchase: React.FC = () => {
     formDataToSubmit.append("quotation1", formData.quotation1 as Blob);
     formDataToSubmit.append("quotation2", formData.quotation2 as Blob);
     formDataToSubmit.append("quotation3", formData.quotation3 as Blob);
+    formDataToSubmit.append("comments", formData.comments);
 
     try {
       const response = await axios.post(
@@ -252,6 +267,17 @@ const Purchase: React.FC = () => {
                 onChange={handleFileChange}
                 className="w-full px-4 py-2 border rounded bg-transparent"
                 required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="comments" className="block font-bold mb-1">
+                Comments
+              </label>
+              <textarea
+                name="comments"
+                value={formData.comments}
+                onChange={handleFileChange}
+                className="w-full px-4 py-2 border rounded bg-transparent"
               />
             </div>
           </div>
