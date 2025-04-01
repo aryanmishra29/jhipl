@@ -31,11 +31,11 @@ const customStyles = {
     maxWidth: "90%",
     maxHeight: "90vh",
     overflow: "auto",
-    zIndex:1000
+    zIndex: 1000,
   },
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex:999
+    zIndex: 999,
   },
 };
 
@@ -409,12 +409,14 @@ const PurchaseOrder: React.FC = () => {
   const handleReject = async (poRequestId: string) => {
     try {
       const response = await axios.post(
-        `${baseUrl}/purchase-orders/request/reject/${poRequestId}`
+        `${baseUrl}/purchase-orders/request/${poRequestId}/reject`
       );
       if (response.status === 200) {
-        location.reload();
+        await fetchPendingPORequests();
       }
-    } catch {}
+    } catch (error) {
+      console.error("Error rejecting PO request:", error);
+    }
   };
 
   const handleDownloadClick = (poRequestId: string, poId: string) => {

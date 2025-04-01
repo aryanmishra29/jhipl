@@ -4,6 +4,8 @@ import Modal from "react-modal";
 import axios from "axios";
 import { Search } from "lucide-react";
 import SearchableDropdown from "../../components/SearchableDropdown.tsx";
+import toast from "react-hot-toast";
+import { isBlockedDate, getBlockedDateMessage } from "../../utils/dateUtils";
 
 interface Reimbursement {
   reimbursementId: string;
@@ -47,8 +49,11 @@ const customStyles = {
 
 const ReimbursementTable: React.FC = () => {
   const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
-  const [filteredReimbursements, setFilteredReimbursements] = useState<Reimbursement[]>([]);
-  const [searchedFilteredReimbursements, setSearchedFilteredReimbursements] = useState<Reimbursement[]>(filteredReimbursements);
+  const [filteredReimbursements, setFilteredReimbursements] = useState<
+    Reimbursement[]
+  >([]);
+  const [searchedFilteredReimbursements, setSearchedFilteredReimbursements] =
+    useState<Reimbursement[]>(filteredReimbursements);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     nameOfEmployee: "",
@@ -73,6 +78,8 @@ const ReimbursementTable: React.FC = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [glCodeFilter, setGlCodeFilter] = useState("");
+  const [costCenterFilter, setCostCenterFilter] = useState("");
   const [showPopup, setShowPopup] = useState(false);
 
   const baseUrl = "https://jhipl.grobird.in";
@@ -83,7 +90,10 @@ const ReimbursementTable: React.FC = () => {
     const newSearchedFilteredReimbursements = filteredReimbursements.filter(
       (reimbursement) =>
         reimbursement.glCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        reimbursement.name.toLowerCase().includes(searchTerm.toLowerCase())
+        reimbursement.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        reimbursement.costCenter
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())
     );
     setSearchedFilteredReimbursements(newSearchedFilteredReimbursements);
   }, [searchTerm, filteredReimbursements]);
@@ -115,7 +125,9 @@ const ReimbursementTable: React.FC = () => {
 
     if (
       (statusFilter === "" || statusFilter === "Select Status") &&
-      (fromDate === "" || toDate === "")
+      (fromDate === "" || toDate === "") &&
+      glCodeFilter === "" &&
+      costCenterFilter === ""
     ) {
       setShowPopup(false);
       return;
@@ -133,7 +145,21 @@ const ReimbursementTable: React.FC = () => {
     }
 
     if (statusFilter !== "" && statusFilter !== "Select Status") {
-      filtered = filtered.filter((reimbursement) => reimbursement.status === statusFilter);
+      filtered = filtered.filter(
+        (reimbursement) => reimbursement.status === statusFilter
+      );
+    }
+
+    if (glCodeFilter !== "") {
+      filtered = filtered.filter(
+        (reimbursement) => reimbursement.glCode === glCodeFilter
+      );
+    }
+
+    if (costCenterFilter !== "") {
+      filtered = filtered.filter(
+        (reimbursement) => reimbursement.costCenter === costCenterFilter
+      );
     }
 
     setFilteredReimbursements(filtered);
@@ -144,9 +170,13 @@ const ReimbursementTable: React.FC = () => {
     setFromDate("");
     setToDate("");
     setStatusFilter("");
+    setGlCodeFilter("");
+    setCostCenterFilter("");
     setShowPopup(false);
   };
-  const togglePopup = () => { setShowPopup(!showPopup); };
+  const togglePopup = () => {
+    setShowPopup(!showPopup);
+  };
 
   // Fetch reimbursements
   const fetchReimbursements = async () => {
@@ -165,6 +195,14 @@ const ReimbursementTable: React.FC = () => {
   };
 
   const openModal = () => {
+    // Check if the current date is a blocked date
+    if (isBlockedDate()) {
+      // Show toast notification instead of opening the modal
+      toast.error(getBlockedDateMessage("reimbursement requests"));
+      return;
+    }
+
+    // If not a blocked date, proceed with opening the modal
     setIsModalOpen(true);
   };
 
@@ -185,7 +223,7 @@ const ReimbursementTable: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(isSubmitting) return;
+    if (isSubmitting) return;
 
     setIsSubmitting(true);
 
@@ -254,7 +292,7 @@ const ReimbursementTable: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by GL Code or Name"
+              placeholder="Search by GL Code, Name or Cost Center"
               className="w-80 bg-white border border-black text-black pl-9 pr-2 py-1 rounded-xl"
             />
           </div>
@@ -266,7 +304,7 @@ const ReimbursementTable: React.FC = () => {
               Filter <FaFilter className="ml-2" />
             </button>
             {showPopup && (
-              <div className="absolute z-20 top-full mt-2 right-0 bg-white shadow-2xl rounded-lg p-4">
+              <div className="absolute z-20 top-full mt-2 right-0 bg-white shadow-2xl sm:w-[400px] w-full rounded-lg p-4">
                 <label className="block text-sm font-bold mb-2 text-black">
                   From Date:
                 </label>
@@ -290,21 +328,48 @@ const ReimbursementTable: React.FC = () => {
                 <label className="block text-sm font-bold mb-2 text-black mt-2">
                   Status
                 </label>
-                <select
-                  name="status"
-                  className="w-full border rounded p-2 bg-white text-black "
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="">Select Status</option>
-                  {["PENDING", "APPROVED", "REJECTED"].map((type, index) => (
-                    <option key={index} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full">
+                  <SearchableDropdown
+                    options={["PENDING", "APPROVED", "REJECTED"]}
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as string)}
+                    placeholder="Select Status"
+                    name="statusFilter"
+                    required={false}
+                  />
+                </div>
 
-                <div className="flex justify-between gap-2 mt-2">
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  GL Code
+                </label>
+                <div className="w-full">
+                  <SearchableDropdown
+                    options={glCodes}
+                    value={glCodeFilter}
+                    onChange={(e) => setGlCodeFilter(e.target.value as string)}
+                    placeholder="Select GL Code"
+                    name="glCodeFilter"
+                    required={false}
+                  />
+                </div>
+
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  Cost Center
+                </label>
+                <div className="w-full">
+                  <SearchableDropdown
+                    options={costCenters}
+                    value={costCenterFilter}
+                    onChange={(e) =>
+                      setCostCenterFilter(e.target.value as string)
+                    }
+                    placeholder="Select Cost Center"
+                    name="costCenterFilter"
+                    required={false}
+                  />
+                </div>
+
+                <div className="flex justify-between gap-2 mt-4">
                   <button
                     onClick={handleFilter}
                     className="bg-blue-500 text-white px-4 py-2 rounded-md"

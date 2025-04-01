@@ -5,6 +5,8 @@ import Modal from "react-modal";
 import axios from "axios";
 import parseTax from "../../utils/parseTax";
 import SearchableDropdown from "../../components/SearchableDropdown.tsx";
+import toast from "react-hot-toast";
+import { isBlockedDate, getBlockedDateMessage } from "../../utils/dateUtils";
 
 // Define the Invoice interface
 interface Invoice {
@@ -66,6 +68,8 @@ const InvoiceTable: React.FC = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [glCodeFilter, setGlCodeFilter] = useState("");
+  const [costCenterFilter, setCostCenterFilter] = useState("");
   const [showPopup, setShowPopup] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,7 +123,8 @@ const InvoiceTable: React.FC = () => {
     const newSearchFilteredInvoices = filteredInvoices.filter(
       (invoice) =>
         invoice.glCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.vendor.toLowerCase().includes(searchTerm.toLowerCase())
+        invoice.vendor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        invoice.costCenter.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setSearchFilteredInvoices(newSearchFilteredInvoices);
   }, [searchTerm, filteredInvoices]);
@@ -229,6 +234,14 @@ const InvoiceTable: React.FC = () => {
   }, []);
 
   const openModal = () => {
+    // Check if the current date is a blocked date
+    if (isBlockedDate()) {
+      // Show toast notification instead of opening the modal
+      toast.error(getBlockedDateMessage("invoices"));
+      return;
+    }
+
+    // If not a blocked date, proceed with opening the modal
     setIsModalOpen(true);
   };
 
@@ -240,7 +253,9 @@ const InvoiceTable: React.FC = () => {
 
     if (
       (statusFilter === "" || statusFilter === "Select Status") &&
-      (fromDate === "" || toDate === "")
+      (fromDate === "" || toDate === "") &&
+      glCodeFilter === "" &&
+      costCenterFilter === ""
     ) {
       setShowPopup(false);
       return;
@@ -261,6 +276,16 @@ const InvoiceTable: React.FC = () => {
       filtered = filtered.filter((invoice) => invoice.status === statusFilter);
     }
 
+    if (glCodeFilter !== "") {
+      filtered = filtered.filter((invoice) => invoice.glCode === glCodeFilter);
+    }
+
+    if (costCenterFilter !== "") {
+      filtered = filtered.filter(
+        (invoice) => invoice.costCenter === costCenterFilter
+      );
+    }
+
     setFilteredInvoices(filtered);
     setShowPopup(false);
   };
@@ -273,6 +298,8 @@ const InvoiceTable: React.FC = () => {
     setFromDate(""); // Clear the date fields
     setToDate("");
     setStatusFilter(""); // Clear the status filter
+    setGlCodeFilter(""); // Clear the GL code filter
+    setCostCenterFilter(""); // Clear the cost center filter
     setShowPopup(false); // Close the popup
   };
 
@@ -703,7 +730,7 @@ const InvoiceTable: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by GL Code or Vendor"
+              placeholder="Search by GL Code, Vendor or Cost Center"
               className="w-80 bg-white border border-black text-black pl-9 pr-2 py-1 rounded-xl"
             />
           </div>
@@ -716,7 +743,7 @@ const InvoiceTable: React.FC = () => {
               Filter <FaFilter className="ml-2" />
             </button>
             {showPopup && (
-              <div className="absolute z-20 top-full mt-2 right-0 bg-white shadow-2xl rounded-lg p-4">
+              <div className="absolute z-20 top-full mt-2 right-0 bg-white shadow-2xl sm:w-[400px] w-full rounded-lg p-4">
                 <label className="block text-sm font-bold mb-2 text-black">
                   From Date:
                 </label>
@@ -740,21 +767,48 @@ const InvoiceTable: React.FC = () => {
                 <label className="block text-sm font-bold mb-2 text-black mt-2">
                   Status
                 </label>
-                <select
-                  name="status"
-                  className="w-full border rounded p-2 bg-white text-black "
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="">Select Status</option>
-                  {["PENDING", "APPROVED", "REJECTED"].map((type, index) => (
-                    <option key={index} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full">
+                  <SearchableDropdown
+                    options={["PENDING", "APPROVED", "REJECTED"]}
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as string)}
+                    placeholder="Select Status"
+                    name="statusFilter"
+                    required={false}
+                  />
+                </div>
 
-                <div className="flex justify-between gap-2 mt-2">
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  GL Code
+                </label>
+                <div className="w-full">
+                  <SearchableDropdown
+                    options={glCodes}
+                    value={glCodeFilter}
+                    onChange={(e) => setGlCodeFilter(e.target.value as string)}
+                    placeholder="Select GL Code"
+                    name="glCodeFilter"
+                    required={false}
+                  />
+                </div>
+
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  Cost Center
+                </label>
+                <div className="w-full">
+                  <SearchableDropdown
+                    options={costCenters}
+                    value={costCenterFilter}
+                    onChange={(e) =>
+                      setCostCenterFilter(e.target.value as string)
+                    }
+                    placeholder="Select Cost Center"
+                    name="costCenterFilter"
+                    required={false}
+                  />
+                </div>
+
+                <div className="flex justify-between gap-2 mt-4">
                   <button
                     onClick={handleFilter}
                     className="bg-blue-500 text-white px-4 py-2 rounded-md"

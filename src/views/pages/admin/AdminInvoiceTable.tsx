@@ -12,6 +12,8 @@ import Modal from "react-modal";
 import axios from "axios";
 import parseTax from "../../../utils/parseTax";
 import { Search } from "lucide-react";
+import SearchableDropdown from "../../../components/SearchableDropdown";
+import { isRestrictedAdmin } from "../../../utils/adminUtils";
 
 interface Invoice {
   invoiceId: string;
@@ -96,6 +98,8 @@ const AdminInvoiceTable: React.FC = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [glCodeFilter, setGlCodeFilter] = useState("");
+  const [costCenterFilter, setCostCenterFilter] = useState("");
   const [showPopup, setShowPopup] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
@@ -148,7 +152,8 @@ const AdminInvoiceTable: React.FC = () => {
     const newSearchFilteredInvoices = filteredInvoices.filter(
       (invoice) =>
         invoice.glCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.vendor.toLowerCase().includes(searchTerm.toLowerCase())
+        invoice.vendor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        invoice.costCenter.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setSearchFilteredInvoices(newSearchFilteredInvoices);
   }, [searchTerm, filteredInvoices]);
@@ -271,7 +276,9 @@ const AdminInvoiceTable: React.FC = () => {
 
     if (
       (statusFilter === "" || statusFilter === "Select Status") &&
-      (fromDate === "" || toDate === "")
+      (fromDate === "" || toDate === "") &&
+      glCodeFilter === "" &&
+      costCenterFilter === ""
     ) {
       setShowPopup(false);
       return;
@@ -292,6 +299,16 @@ const AdminInvoiceTable: React.FC = () => {
       filtered = filtered.filter((invoice) => invoice.status === statusFilter);
     }
 
+    if (glCodeFilter !== "") {
+      filtered = filtered.filter((invoice) => invoice.glCode === glCodeFilter);
+    }
+
+    if (costCenterFilter !== "") {
+      filtered = filtered.filter(
+        (invoice) => invoice.costCenter === costCenterFilter
+      );
+    }
+
     setFilteredInvoices(filtered);
     setShowPopup(false);
   };
@@ -304,6 +321,8 @@ const AdminInvoiceTable: React.FC = () => {
     setFromDate(""); // Clear the date fields
     setToDate("");
     setStatusFilter(""); // Clear the status filter
+    setGlCodeFilter(""); // Clear the GL code filter
+    setCostCenterFilter(""); // Clear the cost center filter
     setShowPopup(false); // Close the popup
   };
 
@@ -406,6 +425,12 @@ const AdminInvoiceTable: React.FC = () => {
   ) => {
     const { name, value } = e.target;
     const files = e.currentTarget.files;
+
+    // If admin is restricted and trying to change fields other than status or description, prevent it
+    const restrictedAdmin = isRestrictedAdmin();
+    if (restrictedAdmin && name !== "status" && name !== "description") {
+      return;
+    }
 
     if (name === "igst") {
       const igstPercentage = parseTax(value) / 100;
@@ -791,7 +816,7 @@ const AdminInvoiceTable: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by GL Code or Vendor"
+              placeholder="Search by GL Code, Vendor or Cost Center"
               className="w-80 bg-white border border-black text-black pl-9 pr-2 py-1 rounded-xl"
             />
           </div>
@@ -803,7 +828,7 @@ const AdminInvoiceTable: React.FC = () => {
               Filter <FaFilter className="ml-2" />
             </button>
             {showPopup && (
-              <div className="absolute z-20 top-full mt-2 right-0 bg-white shadow-2xl rounded-lg p-4">
+              <div className="absolute z-20 top-full mt-2 right-0 bg-white shadow-2xl sm:w-[400px] w-full rounded-lg p-4">
                 <label className="block text-sm font-bold mb-2 text-black">
                   From Date:
                 </label>
@@ -827,21 +852,48 @@ const AdminInvoiceTable: React.FC = () => {
                 <label className="block text-sm font-bold mb-2 text-black mt-2">
                   Status
                 </label>
-                <select
-                  name="status"
-                  className="w-full border rounded p-2 bg-white text-black "
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="">Select Status</option>
-                  {["PENDING", "APPROVED", "REJECTED"].map((type, index) => (
-                    <option key={index} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full">
+                  <SearchableDropdown
+                    options={["PENDING", "APPROVED", "REJECTED"]}
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as string)}
+                    placeholder="Select Status"
+                    name="statusFilter"
+                    required={false}
+                  />
+                </div>
 
-                <div className="flex justify-between gap-2 mt-2">
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  GL Code
+                </label>
+                <div className="w-full">
+                  <SearchableDropdown
+                    options={glCodes}
+                    value={glCodeFilter}
+                    onChange={(e) => setGlCodeFilter(e.target.value as string)}
+                    placeholder="Select GL Code"
+                    name="glCodeFilter"
+                    required={false}
+                  />
+                </div>
+
+                <label className="block text-sm font-bold mb-2 text-black mt-2">
+                  Cost Center
+                </label>
+                <div className="w-full">
+                  <SearchableDropdown
+                    options={costCenters}
+                    value={costCenterFilter}
+                    onChange={(e) =>
+                      setCostCenterFilter(e.target.value as string)
+                    }
+                    placeholder="Select Cost Center"
+                    name="costCenterFilter"
+                    required={false}
+                  />
+                </div>
+
+                <div className="flex justify-between gap-2 mt-4">
                   <button
                     onClick={async () => await handleFilter()}
                     className="bg-blue-500 text-white px-4 py-2 rounded-md"
@@ -974,6 +1026,14 @@ const AdminInvoiceTable: React.FC = () => {
           contentLabel="Invoice Modal"
         >
           <h2 className="text-2xl font-bold mb-4">Edit Invoice</h2>
+          {isRestrictedAdmin() && (
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+              <p>
+                You have limited permissions. You can only edit the Status and
+                Description fields.
+              </p>
+            </div>
+          )}
           <form onSubmit={handleSave}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
               <div>
@@ -982,20 +1042,26 @@ const AdminInvoiceTable: React.FC = () => {
                   type="text"
                   name="invoiceNumber"
                   placeholder="Invoice number"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.invoiceNumber}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
               <div>
                 <label className="text-gray-500">GL Code</label>
                 <select
                   name="glCode"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.glCode}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select GL Code</option>
                   {glCodes.map((code, index) => (
@@ -1010,20 +1076,26 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="date"
                   name="invoiceDate"
-                  className="w-full border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
+                  className={`w-full border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.invoiceDate}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
               <div>
                 <label className="text-gray-500">Cost Center</label>
                 <select
                   name="costCenter"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.costCenter}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select Cost Center</option>
                   {costCenters.map((center, index) => (
@@ -1037,9 +1109,12 @@ const AdminInvoiceTable: React.FC = () => {
                 <label className="text-gray-500">PO Number</label>
                 <select
                   name="poNumber"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.poNumber}
                   onChange={handleChange}
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select PO Number</option>
                   <option value="n/a">N/A</option>
@@ -1054,10 +1129,13 @@ const AdminInvoiceTable: React.FC = () => {
                 <label className="text-gray-500">Payment Type</label>
                 <select
                   name="paymentType"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.paymentType}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select Payment Type</option>
                   {["HALF", "FULL", "PARTIAL"].map((type, index) => (
@@ -1074,10 +1152,13 @@ const AdminInvoiceTable: React.FC = () => {
                 <label className="text-gray-500">Company Name</label>
                 <select
                   name="companyName"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.companyName}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select Vendor</option>
                   {vendors.map((vendor, index) => (
@@ -1092,20 +1173,26 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="number"
                   name="baseAmount"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.baseAmount}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
               <div>
                 <label className="text-gray-500">IGST</label>
                 <select
                   name="igst"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.igst}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select IGST</option>
                   {igsts.map((gst, index) => (
@@ -1120,20 +1207,26 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="number"
                   name="igstAmount"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.igstAmount}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
               <div>
                 <label className="text-gray-500">SGST</label>
                 <select
                   name="sgst"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.sgst}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select SGST</option>
                   {sgsts.map((gst, index) => (
@@ -1148,20 +1241,26 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="number"
                   name="sgstAmount"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.sgstAmount}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
               <div>
                 <label className="text-gray-500">CGST</label>
                 <select
                   name="cgst"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.cgst}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select CGST</option>
                   {cgsts.map((gst, index) => (
@@ -1176,10 +1275,13 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="number"
                   name="cgstAmount"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.cgstAmount}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
 
@@ -1187,9 +1289,12 @@ const AdminInvoiceTable: React.FC = () => {
                 <label className="text-gray-500">IGST 2</label>
                 <select
                   name="igst2"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.igst2}
                   onChange={handleChange}
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select IGST 2</option>
                   {igsts.map((gst, index) => (
@@ -1204,18 +1309,24 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="number"
                   name="igstAmount2"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.igstAmount2}
                   onChange={handleChange}
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
               <div>
                 <label className="text-gray-500">SGST 2</label>
                 <select
                   name="sgst2"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.sgst2}
                   onChange={handleChange}
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select SGST 2</option>
                   {sgsts.map((gst, index) => (
@@ -1230,18 +1341,24 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="number"
                   name="sgstAmount2"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.sgstAmount2}
                   onChange={handleChange}
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
               <div>
                 <label className="text-gray-500">CGST 2</label>
                 <select
                   name="cgst2"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.cgst2}
                   onChange={handleChange}
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select CGST 2</option>
                   {cgsts.map((gst, index) => (
@@ -1256,19 +1373,25 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="number"
                   name="cgstAmount2"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.cgstAmount2}
                   onChange={handleChange}
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
               <div>
                 <label className="text-gray-500">Withholding Tax</label>
                 <select
                   name="withholdingTax"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.withholdingTax}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 >
                   <option value="">Select Withholding Tax</option>
                   {withholdingTaxes.map((gst, index) => (
@@ -1288,10 +1411,13 @@ const AdminInvoiceTable: React.FC = () => {
                 <input
                   type="number"
                   name="total"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.total}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
             </div>
@@ -1300,7 +1426,7 @@ const AdminInvoiceTable: React.FC = () => {
                 <label className="text-gray-500">Status</label>
                 <select
                   name="status"
-                  className="w-full border rounded p-2 bg-white "
+                  className="w-full border rounded p-2 bg-white"
                   value={formData.status}
                   onChange={handleChange}
                   required
@@ -1319,9 +1445,12 @@ const AdminInvoiceTable: React.FC = () => {
                   type="text"
                   name="utrNo"
                   placeholder="UTR number"
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
                   value={formData.utrNo}
                   onChange={handleChange}
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
             </div>
@@ -1332,7 +1461,7 @@ const AdminInvoiceTable: React.FC = () => {
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  className="w-full border rounded p-2 bg-white "
+                  className="w-full border rounded p-2 bg-white"
                 />
               </div>
               <div className="flex-1">
@@ -1341,7 +1470,10 @@ const AdminInvoiceTable: React.FC = () => {
                   name="narration"
                   value={formData.narration}
                   onChange={handleChange}
-                  className="w-full border rounded p-2 bg-white "
+                  className={`w-full border rounded p-2 bg-white ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isRestrictedAdmin()}
                 />
               </div>
             </div>

@@ -54,7 +54,7 @@ const SearchableDropdown: FC<SearchableDropdownProps> = ({
   const isInvalid = required && touched && !value;
 
   return (
-    <div className="relative w-full" onBlur={handleBlur} tabIndex={0}>
+    <div className="relative w-ful text-black" onBlur={handleBlur} tabIndex={0}>
       <div
         className={`w-full border rounded p-2 pl-3 bg-white flex items-center justify-between cursor-pointer ${
           isInvalid ? "border-red-500" : ""

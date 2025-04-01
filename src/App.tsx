@@ -9,10 +9,11 @@ import Calendar from "./views/pages/Calendar/Calendar";
 import Login from "./views/pages/Login";
 import ProtectedRoute from "./views/pages/ProtectedRoute";
 import AdminDashboard from "./views/pages/admin/AdminDashboard";
-import './App.css';
+import "./App.css";
 import AdminReimbursementTable from "./views/pages/admin/AdminReimbursementTable";
 import AdminInvoiceTable from "./views/pages/admin/AdminInvoiceTable";
 import PurchaseOrder from "./views/pages/admin/PurchaseOrder";
+import { Toaster } from "react-hot-toast";
 
 function App() {
   const location = useLocation();
@@ -20,44 +21,55 @@ function App() {
 
   // Inside App component
   return (
-    <Routes location={location} key={location.pathname}>
-      <Route path="/login" element={<Login />} />
+    <>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 5000,
+          style: {
+            background: "#333",
+            color: "#fff",
+            maxWidth: "500px",
+          },
+        }}
+      />
+      <Routes location={location} key={location.pathname}>
+        <Route path="/login" element={<Login />} />
 
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute userType={userType} requiredType="USER">
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Staff />} />
-        <Route path="reimbursement" element={<ReimbursementTable />} />
-        <Route path="invoices" element={<InvoiceTable />} />
-        <Route path="calendar" element={<Calendar />} />
-        {/* <Route path="*" element={<Build />} /> */}
-        <Route path="purchase-orders" element={<Purchase />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute userType={userType} requiredType="USER">
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Staff />} />
+          <Route path="reimbursement" element={<ReimbursementTable />} />
+          <Route path="invoices" element={<InvoiceTable />} />
+          <Route path="calendar" element={<Calendar />} />
+          {/* <Route path="*" element={<Build />} /> */}
+          <Route path="purchase-orders" element={<Purchase />} />
+        </Route>
 
-      </Route>
-
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute userType={userType} requiredType="ADMIN">
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<AdminDashboard />} />
-        <Route path="reimbursement" element={<AdminReimbursementTable />} />
-        <Route path="invoices" element={<AdminInvoiceTable />} />
-        <Route path="calendar" element={<Calendar />} />
-        {/* <Route path="*" element={<Build />} /> */}
-        <Route path="purchase-orders" element={<PurchaseOrder />} />
-      </Route>
-    </Routes>
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute userType={userType} requiredType="ADMIN">
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AdminDashboard />} />
+          <Route path="reimbursement" element={<AdminReimbursementTable />} />
+          <Route path="invoices" element={<AdminInvoiceTable />} />
+          <Route path="calendar" element={<Calendar />} />
+          {/* <Route path="*" element={<Build />} /> */}
+          <Route path="purchase-orders" element={<PurchaseOrder />} />
+        </Route>
+      </Routes>
+    </>
   );
-
 }
 
 export default App;

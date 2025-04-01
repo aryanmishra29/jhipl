@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { FaPlus } from "react-icons/fa";
 import Modal from "react-modal";
 import axios from "axios";
+import toast from "react-hot-toast";
+import { isBlockedDate, getBlockedDateMessage } from "../../../utils/dateUtils";
 
 const customStyles = {
   content: {
@@ -38,7 +40,7 @@ const Purchase: React.FC = () => {
     quotation1: null as File | null,
     quotation2: null as File | null,
     quotation3: null as File | null,
-    comments: ""
+    comments: "",
   });
 
   const baseUrl = "https://jhipl.grobird.in";
@@ -64,6 +66,14 @@ const Purchase: React.FC = () => {
   }, []);
 
   const openModal = () => {
+    // Check if the current date is a blocked date
+    if (isBlockedDate()) {
+      // Show toast notification instead of opening the modal
+      toast.error(getBlockedDateMessage("PO requests"));
+      return;
+    }
+
+    // If not a blocked date, proceed with opening the modal
     setIsModalOpen(true);
   };
 
@@ -75,7 +85,7 @@ const Purchase: React.FC = () => {
       quotation1: null,
       quotation2: null,
       quotation3: null,
-      comments: ""
+      comments: "",
     });
   };
 
