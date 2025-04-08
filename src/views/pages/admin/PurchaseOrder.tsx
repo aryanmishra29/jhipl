@@ -4,6 +4,11 @@ import Modal from "react-modal";
 import axios from "axios";
 import { Download } from "lucide-react";
 import parseTax from "../../../utils/parseTax";
+import {
+  isRestrictedAdmin,
+  getRestrictedAdminEmail,
+  getRestrictedAdminUserIds,
+} from "../../../utils/adminUtils";
 
 interface PurchaseOrder {
   poId: string;
@@ -12,6 +17,7 @@ interface PurchaseOrder {
   finalAmount: number;
   poRequestId: string;
   vendor: string;
+  userId: string;
 }
 
 const customStyles = {
@@ -111,13 +117,20 @@ const PurchaseOrder: React.FC = () => {
     if (response.status !== 200) {
       throw new Error("Failed to fetch purchase orders");
     }
-    const mappedData = response.data.map((item: any) => ({
+    let mappedData = response.data.map((item: any) => ({
       poRequestId: item.poRequestId,
       comments: item.comments,
+      userId: item.userId,
     }));
 
+    if (isRestrictedAdmin()) {
+      const adminEmail = getRestrictedAdminEmail();
+      if (adminEmail) {
+        const allowedUserIds = getRestrictedAdminUserIds(adminEmail);
+        mappedData = mappedData.filter((po: any) => allowedUserIds.includes(po.userId));
+      }
+    }
     setFilesData(mappedData);
-    console.log(mappedData);
   };
   const fetchPurchaseOrders = async () => {
     try {
@@ -126,14 +139,22 @@ const PurchaseOrder: React.FC = () => {
       if (response.status !== 200) {
         throw new Error("Failed to fetch purchase orders");
       }
-      const data: PurchaseOrder[] = response.data.map((po: any) => ({
+      let data: PurchaseOrder[] = response.data.map((po: any) => ({
         poId: po.poId,
         poRequestId: po.poRequestId,
         poNumber: po.poNumber,
         remainingAmount: po.remainingAmount,
         finalAmount: po.finalAmount,
         vendor: po.vendor,
+        userId: po.userId,
       }));
+      if (isRestrictedAdmin()) {
+        const adminEmail = getRestrictedAdminEmail();
+        if (adminEmail) {
+          const allowedUserIds = getRestrictedAdminUserIds(adminEmail);
+          data = data.filter((po) => allowedUserIds.includes(po.userId));
+        }
+      }
       setPurchaseOrders(data);
     } catch (error) {
       console.error("Error fetching purchase orders:", error);

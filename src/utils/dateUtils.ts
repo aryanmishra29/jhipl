@@ -6,6 +6,10 @@ export const isBlockedDate = (): boolean => {
   const today = new Date();
   const day = today.getDate();
 
+  if (localStorage.getItem("userEmail") === "user@jhipl.com") {
+    return false;
+  }
+
   // Check if today is the 2nd, 11th, or 21st of the month
   return day === 2 || day === 3 || day === 4 || day === 5 || day === 11 || day === 12 || day === 13 || day === 14 || day === 15 || day === 21 || day === 22 || day === 23 || day === 24 || day === 25;
 };

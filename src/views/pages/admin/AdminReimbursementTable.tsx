@@ -12,7 +12,11 @@ import Modal from "react-modal";
 import axios from "axios";
 import { Search } from "lucide-react";
 import SearchableDropdown from "../../../components/SearchableDropdown";
-import { isRestrictedAdmin } from "../../../utils/adminUtils";
+import {
+  isRestrictedAdmin,
+  getRestrictedAdminEmail,
+  getRestrictedAdminUserIds,
+} from "../../../utils/adminUtils";
 
 interface Reimbursement {
   userId: string;
@@ -176,7 +180,18 @@ const AdminReimbursementTable: React.FC = () => {
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
-      const data: Reimbursement[] = await response.json();
+      let data: Reimbursement[] = await response.json();
+
+      if (isRestrictedAdmin()) {
+        const adminEmail = getRestrictedAdminEmail();
+        if (adminEmail) {
+          const allowedUserIds = getRestrictedAdminUserIds(adminEmail);
+          data = data.filter((reimbursement) =>
+            allowedUserIds.includes(reimbursement.userId)
+          );
+        }
+      }
+
       setReimbursements(data);
       setFilteredReimbursements(data);
     } catch (error) {

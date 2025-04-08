@@ -13,9 +13,14 @@ import axios from "axios";
 import parseTax from "../../../utils/parseTax";
 import { Search } from "lucide-react";
 import SearchableDropdown from "../../../components/SearchableDropdown";
-import { isRestrictedAdmin } from "../../../utils/adminUtils";
+import {
+  isRestrictedAdmin,
+  getRestrictedAdminEmail,
+  getRestrictedAdminUserIds,
+} from "../../../utils/adminUtils";
 
 interface Invoice {
+  userId: string;
   invoiceId: string;
   number: string;
   glCode: string;
@@ -337,7 +342,19 @@ const AdminInvoiceTable: React.FC = () => {
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
-      const data: Invoice[] = await response.json();
+      let data: Invoice[] = await response.json();
+
+      // Filter invoices for restricted admins
+      if (isRestrictedAdmin()) {
+        const adminEmail = getRestrictedAdminEmail();
+        if (adminEmail) {
+          const allowedUserIds = getRestrictedAdminUserIds(adminEmail);
+          data = data.filter((invoice) =>
+            allowedUserIds.includes(invoice.userId)
+          );
+        }
+      }
+
       setInvoices(data);
       setFilteredInvoices(data);
     } catch (error) {
