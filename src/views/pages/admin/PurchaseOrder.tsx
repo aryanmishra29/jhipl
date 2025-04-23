@@ -430,7 +430,7 @@ const PurchaseOrder: React.FC = () => {
   const handleReject = async (poRequestId: string) => {
     try {
       const response = await axios.post(
-        `${baseUrl}/purchase-orders/request/${poRequestId}/reject`
+        `${baseUrl}/purchase-orders/request/reject/${poRequestId}`
       );
       if (response.status === 200) {
         await fetchPendingPORequests();
