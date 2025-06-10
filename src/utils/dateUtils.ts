@@ -11,7 +11,7 @@ export const isBlockedDate = (): boolean => {
   }
 
   // Check if today is the 2nd, 11th, or 21st of the month
-  return day === 2 || day === 3 || day === 4 || day === 5 || day === 11 || day === 12 || day === 13 || day === 14 || day === 15 || day === 21 || day === 22 || day === 23 || day === 24 || day === 25;
+  return day === 2 || day === 3 || day === 4 || day === 5 || day === 12 || day === 13 || day === 14 || day === 15 || day === 22 || day === 23 || day === 24 || day === 25;
 };
 
 /**

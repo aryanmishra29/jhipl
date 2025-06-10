@@ -101,7 +101,89 @@ const InvoiceTable: React.FC = () => {
     approvalDoc: null as File | null,
     description: "",
   });
+
+  const [costCenterRows, setCostCenterRows] = useState([
+    { costCenter: "", amount: "" },
+  ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingInvoiceNumber, setIsCheckingInvoiceNumber] = useState(false);
+  const [invoiceNumberError, setInvoiceNumberError] = useState("");
+  const [invoiceNumberValid, setInvoiceNumberValid] = useState(false);
+
+  // Function to add a new cost center row
+  const addCostCenterRow = () => {
+    setCostCenterRows([...costCenterRows, { costCenter: "", amount: "" }]);
+  };
+
+  // Function to remove a cost center row
+  const removeCostCenterRow = (index: number) => {
+    if (costCenterRows.length > 1) {
+      const newRows = costCenterRows.filter((_, i) => i !== index);
+      setCostCenterRows(newRows);
+      updateBaseAmountFromCostCenters(newRows);
+    }
+  };
+
+  // Function to update cost center row
+  const updateCostCenterRow = (index: number, field: string, value: string) => {
+    const newRows = [...costCenterRows];
+    newRows[index] = { ...newRows[index], [field]: value };
+    setCostCenterRows(newRows);
+    if (field === "amount") {
+      updateBaseAmountFromCostCenters(newRows);
+    }
+  };
+
+  // Function to calculate base amount from cost center amounts
+  const updateBaseAmountFromCostCenters = (rows: typeof costCenterRows) => {
+    const totalAmount = rows.reduce((sum, row) => {
+      const amount = parseFloat(row.amount) || 0;
+      return sum + amount;
+    }, 0);
+
+    setFormData((prev) => ({
+      ...prev,
+      baseAmount: totalAmount.toFixed(2),
+    }));
+
+    // Recalculate tax amounts based on new base amount
+    recalculateTaxes(totalAmount);
+  };
+
+  // Function to recalculate all tax amounts when base amount changes
+  const recalculateTaxes = (baseAmount: number) => {
+    const igstPercentage = parseTax(formData.igst) / 100;
+    const igstAmount = (baseAmount * igstPercentage).toFixed(4);
+    const sgstPercentage = parseTax(formData.sgst) / 100;
+    const sgstAmount = (baseAmount * sgstPercentage).toFixed(4);
+    const cgstPercentage = parseTax(formData.cgst) / 100;
+    const cgstAmount = (baseAmount * cgstPercentage).toFixed(4);
+    const igstPercentage2 = parseTax(formData.igst2) / 100;
+    const igstAmount2 = (baseAmount * igstPercentage2).toFixed(4);
+    const sgstPercentage2 = parseTax(formData.sgst2) / 100;
+    const sgstAmount2 = (baseAmount * sgstPercentage2).toFixed(4);
+    const cgstPercentage2 = parseTax(formData.cgst2) / 100;
+    const cgstAmount2 = (baseAmount * cgstPercentage2).toFixed(4);
+
+    setFormData((prev) => ({
+      ...prev,
+      igstAmount: igstAmount,
+      sgstAmount: sgstAmount,
+      cgstAmount: cgstAmount,
+      igstAmount2: igstAmount2,
+      sgstAmount2: sgstAmount2,
+      cgstAmount2: cgstAmount2,
+      total: (
+        baseAmount +
+        parseFloat(igstAmount) +
+        parseFloat(sgstAmount) +
+        parseFloat(cgstAmount) +
+        parseFloat(igstAmount2) +
+        parseFloat(sgstAmount2) +
+        parseFloat(cgstAmount2)
+      ).toFixed(4),
+    }));
+  };
   const [poDetails, setPoDetails] = useState<Map<string, PoDetails>>(new Map());
   const [currentPoId, setCurrentPoId] = useState<string>("");
   const [costCenters, setCostCenters] = useState<string[]>([]);
@@ -112,6 +194,53 @@ const InvoiceTable: React.FC = () => {
 
   const [sgsts, setSgsts] = useState<string[]>([]);
   const [igsts, setIgsts] = useState<string[]>([]);
+
+  // Function to check if invoice number is unique
+  const checkInvoiceNumberUniqueness = async (invoiceNumber: string) => {
+    if (!invoiceNumber.trim()) {
+      setInvoiceNumberError("");
+      setInvoiceNumberValid(false);
+      return;
+    }
+
+    setIsCheckingInvoiceNumber(true);
+    setInvoiceNumberError("");
+
+    try {
+      const response = await axios.get(`${baseUrl}/invoices/number/used`, {
+        params: { invoiceNumber },
+      });
+
+      if (response.data === true) {
+        setInvoiceNumberError(
+          "This invoice number is already used. Please choose a different number."
+        );
+        setInvoiceNumberValid(false);
+      } else {
+        setInvoiceNumberError("");
+        setInvoiceNumberValid(true);
+      }
+    } catch (error) {
+      console.error("Error checking invoice number:", error);
+      setInvoiceNumberError(
+        "Error validating invoice number. Please try again."
+      );
+      setInvoiceNumberValid(false);
+    } finally {
+      setIsCheckingInvoiceNumber(false);
+    }
+  };
+
+  // Debounced invoice number check
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (formData.invoiceNumber) {
+        checkInvoiceNumberUniqueness(formData.invoiceNumber);
+      }
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.invoiceNumber]);
 
   const baseUrl = "https://jhipl.grobird.in";
   // const baseUrl = 'http://localhost:8080';
@@ -249,6 +378,40 @@ const InvoiceTable: React.FC = () => {
 
   const closeModal = () => {
     setIsModalOpen(false);
+    // Reset cost center rows
+    setCostCenterRows([{ costCenter: "", amount: "" }]);
+    // Reset invoice number validation states
+    setInvoiceNumberError("");
+    setInvoiceNumberValid(false);
+    setIsCheckingInvoiceNumber(false);
+    // Reset form data
+    setFormData({
+      invoiceNumber: "",
+      invoiceDate: "",
+      poNumber: "",
+      currency: "",
+      companyName: "",
+      baseAmount: "",
+      paymentType: "",
+      igst: "0",
+      igstAmount: "0",
+      sgst: "0",
+      sgstAmount: "0",
+      cgst: "0",
+      cgstAmount: "0",
+      igst2: "0",
+      igstAmount2: "0",
+      sgst2: "0",
+      sgstAmount2: "0",
+      cgst2: "0",
+      cgstAmount2: "0",
+      total: "",
+      glCode: "",
+      costCenter: "",
+      receipt: null,
+      approvalDoc: null,
+      description: "",
+    });
   };
   const handleFilter = () => {
     let filtered: Invoice[] = invoices;
@@ -641,11 +804,27 @@ const InvoiceTable: React.FC = () => {
       cgstAmount2,
       total,
       glCode,
-      costCenter,
       receipt,
       approvalDoc,
       description,
     } = formData;
+
+    // Validate invoice number uniqueness
+    if (invoiceNumberError || !invoiceNumberValid) {
+      alert("Please enter a valid and unique invoice number.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validate cost center rows
+    const hasValidCostCenters = costCenterRows.every(
+      (row) => row.costCenter && row.amount
+    );
+    if (!hasValidCostCenters) {
+      alert("Please fill in all cost centers and amounts.");
+      setIsSubmitting(false);
+      return;
+    }
 
     if (
       !invoiceNumber ||
@@ -658,7 +837,6 @@ const InvoiceTable: React.FC = () => {
       !cgst ||
       !total ||
       !glCode ||
-      !costCenter ||
       !receipt ||
       !approvalDoc ||
       !paymentType ||
@@ -667,13 +845,30 @@ const InvoiceTable: React.FC = () => {
       !cgstAmount
     ) {
       alert("Please fill in all required fields.");
+      setIsSubmitting(false);
       return;
     }
+
+    // Prepare cost center data
+    const costCenterString = costCenterRows
+      .map((row) => row.costCenter)
+      .join(";");
+    const baseAmountForCostCenters = costCenterRows.map((row) =>
+      parseFloat(row.amount)
+    );
 
     const formDataToSubmit = new FormData();
     formDataToSubmit.append("userId", user_id ?? "");
     formDataToSubmit.append("number", invoiceNumber);
-    formDataToSubmit.append("costCenter", costCenter);
+    formDataToSubmit.append("costCenter", costCenterString);
+
+    // Send array elements individually
+    baseAmountForCostCenters.forEach((amount) => {
+      formDataToSubmit.append(
+        "baseAmountSplitForCostCenters",
+        amount.toString()
+      );
+    });
     formDataToSubmit.append("glCode", glCode);
     formDataToSubmit.append("poId", currentPoId);
     formDataToSubmit.append("date", invoiceDate);
@@ -698,12 +893,12 @@ const InvoiceTable: React.FC = () => {
     if (approvalDoc) formDataToSubmit.append("approvals", approvalDoc);
 
     try {
+      formDataToSubmit.forEach((value, key) => console.log(key, value));
       await axios.post(`${baseUrl}/invoices`, formDataToSubmit, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
-      // formDataToSubmit.forEach((value, key) => console.log(key, value));
       closeModal();
       fetchInvoices();
     } catch (error) {
@@ -881,7 +1076,7 @@ const InvoiceTable: React.FC = () => {
                   {invoice.glCode}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
-                  {invoice.costCenter}
+                  {invoice.costCenter.replace(/;/g, ", ")}
                 </td>
                 <td className="py-2 px-4 text-start border-b">{invoice.gst}</td>
                 <td className="py-2 px-4 text-start border-b">
@@ -923,371 +1118,600 @@ const InvoiceTable: React.FC = () => {
         style={customStyles}
         contentLabel="Invoice Modal"
       >
-        <h2 className="text-2xl font-bold mb-4">Add New Invoice</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-36 gap-y-4">
-            <div>
-              <input
-                type="text"
-                name="invoiceNumber"
-                placeholder="Invoice number"
-                className="w-full border rounded p-2 bg-white"
-                value={formData.invoiceNumber}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div>
-              <SearchableDropdown
-                name="glCode"
-                options={glCodes.length > 0 ? glCodes : ["N/A"]}
-                value={formData.glCode}
-                onChange={handleChange}
-                placeholder="Select GL Code"
-              />
-            </div>
-            <div>
-              <input
-                type="date"
-                name="invoiceDate"
-                placeholder="Invoice date"
-                className="w-full border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
-                value={formData.invoiceDate}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div>
-              <SearchableDropdown
-                name="costCenter"
-                options={costCenters.length > 0 ? costCenters : ["N/A"]}
-                value={formData.costCenter}
-                onChange={handleChange}
-                placeholder="Select Cost Center"
-              />
-            </div>
-
-            <div>
-              <select
-                name="poNumber"
-                className="w-full border rounded p-2 bg-white"
-                value={formData.poNumber}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select PO Number</option>
-                <option value="n/a">N/A</option>
-                {(pos?.length > 0 ? pos : []).map((po, index) => (
-                  <option key={index} value={po}>
-                    {po}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <select
-                name="paymentType"
-                className="w-full border rounded p-2 bg-white"
-                value={formData.paymentType}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select Payment Type</option>
-                {["HALF", "FULL", "PARTIAL"].map((center, index) => (
-                  <option key={index} value={center}>
-                    {center}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="mt-12 grid grid-cols-2 md:grid-cols-6 gap-4">
-            <div className="col-span-2">
-              <label className="text-gray-500">Company name</label>
-              <SearchableDropdown
-                name="companyName"
-                options={vendors.length > 0 ? vendors : ["N/A"]}
-                value={formData.companyName}
-                onChange={handleChange}
-                placeholder="Select Vendor"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-gray-500">Base Amount</label>
-              <input
-                type="number"
-                name="baseAmount"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.baseAmount}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div>
-              <label className="text-gray-500">IGST</label>
-              <select
-                name="igst"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.igst}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select IGST</option>
-                {(igsts.length > 0
-                  ? igsts
-                  : ["IGST 5%", "IGST 12%", "IGST 18%", "IGST 28%"]
-                ).map((gst, index) => (
-                  <option key={index} value={gst}>
-                    {gst}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-gray-500">IGST Amount</label>
-              <input
-                type="number"
-                name="igstAmount"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.igstAmount}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div>
-              <label className="text-gray-500">SGST</label>
-              <select
-                name="sgst"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.sgst}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select SGST</option>
-                {(sgsts.length > 0
-                  ? sgsts
-                  : ["SGST 5%", "SGST 12%", "SGST 18%", "SGST 28%"]
-                ).map((gst, index) => (
-                  <option key={index} value={gst}>
-                    {gst}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-gray-500">SGST Amount</label>
-              <input
-                type="number"
-                name="sgstAmount"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.sgstAmount}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div>
-              <label className="text-gray-500">CGST</label>
-              <select
-                name="cgst"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.cgst}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select CGST</option>
-                {(cgsts.length > 0
-                  ? cgsts
-                  : ["CGST 5%", "CGST 12%", "CGST 18%", "CGST 28%"]
-                ).map((gst, index) => (
-                  <option key={index} value={gst}>
-                    {gst}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-gray-500">CGST Amount</label>
-              <input
-                type="number"
-                name="cgstAmount"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.cgstAmount}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="text-gray-500">IGST 2</label>
-              <select
-                name="igst2"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.igst2}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select IGST 2</option>
-                {(igsts.length > 0
-                  ? igsts
-                  : ["IGST 5%", "IGST 12%", "IGST 18%", "IGST 28%"]
-                ).map((gst, index) => (
-                  <option key={index} value={gst}>
-                    {gst}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-gray-500">IGST Amount 2</label>
-              <input
-                type="number"
-                name="igstAmount2"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.igstAmount2}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div>
-              <label className="text-gray-500">SGST 2</label>
-              <select
-                name="sgst2"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.sgst2}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select SGST 2</option>
-                {(sgsts.length > 0
-                  ? sgsts
-                  : ["SGST 5%", "SGST 12%", "SGST 18%", "SGST 28%"]
-                ).map((gst, index) => (
-                  <option key={index} value={gst}>
-                    {gst}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-gray-500">SGST Amount 2</label>
-              <input
-                type="number"
-                name="sgstAmount2"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.sgstAmount2}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div>
-              <label className="text-gray-500">CGST 2</label>
-              <select
-                name="cgst2"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.cgst2}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select CGST 2</option>
-                {(cgsts.length > 0
-                  ? cgsts
-                  : ["CGST 5%", "CGST 12%", "CGST 18%", "CGST 28%"]
-                ).map((gst, index) => (
-                  <option key={index} value={gst}>
-                    {gst}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-gray-500">CGST Amount 2</label>
-              <input
-                type="number"
-                name="cgstAmount2"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.cgstAmount2}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div>
-              <label className="text-gray-500">Total</label>
-              <input
-                type="number"
-                name="total"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                value={formData.total}
-                onChange={handleChange}
-                required
-              />
+        <h2 className="text-2xl font-bold mb-6">Add New Invoice</h2>
+        <form onSubmit={handleSubmit} className="max-h-[80vh] overflow-y-auto">
+          {/* Basic Invoice Information */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Invoice Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Invoice Number
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="invoiceNumber"
+                    placeholder="Enter invoice number"
+                    className={`w-full border rounded p-2 bg-white pr-10 ${
+                      invoiceNumberError
+                        ? "border-red-500 bg-red-50"
+                        : invoiceNumberValid
+                        ? "border-green-500 bg-green-50"
+                        : "border-gray-300"
+                    }`}
+                    value={formData.invoiceNumber}
+                    onChange={handleChange}
+                    required
+                  />
+                  {isCheckingInvoiceNumber && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <svg
+                        className="animate-spin h-4 w-4 text-blue-500"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                    </div>
+                  )}
+                  {!isCheckingInvoiceNumber && invoiceNumberValid && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <FaCheck className="h-4 w-4 text-green-500" />
+                    </div>
+                  )}
+                  {!isCheckingInvoiceNumber && invoiceNumberError && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <FaTimes className="h-4 w-4 text-red-500" />
+                    </div>
+                  )}
+                </div>
+                {invoiceNumberError && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {invoiceNumberError}
+                  </p>
+                )}
+                {invoiceNumberValid && !invoiceNumberError && (
+                  <p className="mt-1 text-sm text-green-600">
+                    ✓ Invoice number is available
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Invoice Date
+                </label>
+                <input
+                  type="date"
+                  name="invoiceDate"
+                  className="w-full border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
+                  value={formData.invoiceDate}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  GL Code
+                </label>
+                <SearchableDropdown
+                  name="glCode"
+                  options={glCodes.length > 0 ? glCodes : ["N/A"]}
+                  value={formData.glCode}
+                  onChange={handleChange}
+                  placeholder="Select GL Code"
+                />
+              </div>
             </div>
           </div>
-          <div className="flex flex-col max-w-xl w-full">
-            <label className="text-gray-500 ">Description</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              className="bg-transparent border border-gray-300 p-2 rounded-lg "
-            />
-          </div>
-          <div className="flex gap-4">
-            <div className="mt-4">
-              <label className="text-gray-500">Receipt</label>
-              <input
-                type="file"
-                name="receipt"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                onChange={handleChange}
-                required
-              />
+
+          {/* Vendor and PO Information */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Vendor & Purchase Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Company Name
+                </label>
+                <SearchableDropdown
+                  name="companyName"
+                  options={vendors.length > 0 ? vendors : ["N/A"]}
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  placeholder="Select Vendor"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  PO Number
+                </label>
+                <select
+                  name="poNumber"
+                  className="w-full border rounded p-2 bg-white"
+                  value={formData.poNumber}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select PO Number</option>
+                  <option value="n/a">N/A</option>
+                  {(pos?.length > 0 ? pos : []).map((po, index) => (
+                    <option key={index} value={po}>
+                      {po}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Payment Type
+                </label>
+                <select
+                  name="paymentType"
+                  className="w-full border rounded p-2 bg-white"
+                  value={formData.paymentType}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Payment Type</option>
+                  {["HALF", "FULL", "PARTIAL"].map((type, index) => (
+                    <option key={index} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="mt-4">
-              <label className="text-gray-500">Approval document</label>
-              <input
-                type="file"
-                name="approvalDoc"
-                className="w-full border rounded p-2 mt-1 bg-white"
-                onChange={handleChange}
-                required
-              />
+          </div>
+
+          {/* Cost Centers Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Cost Center Allocation
+            </h3>
+            <div className="space-y-3">
+              {costCenterRows.map((row, index) => (
+                <div
+                  key={index}
+                  className="flex gap-3 items-end p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Cost Center
+                    </label>
+                    <SearchableDropdown
+                      name={`costCenter-${index}`}
+                      options={costCenters.length > 0 ? costCenters : ["N/A"]}
+                      value={row.costCenter}
+                      onChange={(e) =>
+                        updateCostCenterRow(
+                          index,
+                          "costCenter",
+                          e.target.value as string
+                        )
+                      }
+                      placeholder="Select Cost Center"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Amount
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="w-full border rounded p-2 bg-white"
+                      value={row.amount}
+                      onChange={(e) =>
+                        updateCostCenterRow(index, "amount", e.target.value)
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    {index === 0 && (
+                      <button
+                        type="button"
+                        onClick={addCostCenterRow}
+                        className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 transition-colors"
+                        title="Add Cost Center"
+                      >
+                        <FaPlus />
+                      </button>
+                    )}
+                    {costCenterRows.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeCostCenterRow(index)}
+                        className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition-colors"
+                        title="Remove Cost Center"
+                      >
+                        <FaTimes />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <div className="w-full">
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Base Amount{" "}
+                    <span className="text-xs text-gray-500">
+                      (Auto-calculated from cost centers, but editable)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="baseAmount"
+                    className="w-full border rounded p-3 bg-white text-lg font-semibold"
+                    value={formData.baseAmount}
+                    onChange={handleChange}
+                    placeholder="Auto-calculated or enter manually"
+                    required
+                  />
+                </div>
+              </div>
             </div>
           </div>
-          <div className="mt-4 flex justify-between">
+          {/* Tax Information */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Tax Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Primary Tax Section */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h4 className="text-md font-medium text-gray-600 mb-3">
+                  Primary Tax
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      IGST
+                    </label>
+                    <select
+                      name="igst"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.igst}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select IGST</option>
+                      {(igsts.length > 0
+                        ? igsts
+                        : ["IGST 5%", "IGST 12%", "IGST 18%", "IGST 28%"]
+                      ).map((gst, index) => (
+                        <option key={index} value={gst}>
+                          {gst}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      IGST Amount
+                    </label>
+                    <input
+                      type="number"
+                      name="igstAmount"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.igstAmount}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      SGST
+                    </label>
+                    <select
+                      name="sgst"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.sgst}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select SGST</option>
+                      {(sgsts.length > 0
+                        ? sgsts
+                        : ["SGST 5%", "SGST 12%", "SGST 18%", "SGST 28%"]
+                      ).map((gst, index) => (
+                        <option key={index} value={gst}>
+                          {gst}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      SGST Amount
+                    </label>
+                    <input
+                      type="number"
+                      name="sgstAmount"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.sgstAmount}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      CGST
+                    </label>
+                    <select
+                      name="cgst"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.cgst}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select CGST</option>
+                      {(cgsts.length > 0
+                        ? cgsts
+                        : ["CGST 5%", "CGST 12%", "CGST 18%", "CGST 28%"]
+                      ).map((gst, index) => (
+                        <option key={index} value={gst}>
+                          {gst}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      CGST Amount
+                    </label>
+                    <input
+                      type="number"
+                      name="cgstAmount"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.cgstAmount}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Secondary Tax Section */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h4 className="text-md font-medium text-gray-600 mb-3">
+                  Secondary Tax
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      IGST 2
+                    </label>
+                    <select
+                      name="igst2"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.igst2}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select IGST 2</option>
+                      {(igsts.length > 0
+                        ? igsts
+                        : ["IGST 5%", "IGST 12%", "IGST 18%", "IGST 28%"]
+                      ).map((gst, index) => (
+                        <option key={index} value={gst}>
+                          {gst}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      IGST Amount 2
+                    </label>
+                    <input
+                      type="number"
+                      name="igstAmount2"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.igstAmount2}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      SGST 2
+                    </label>
+                    <select
+                      name="sgst2"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.sgst2}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select SGST 2</option>
+                      {(sgsts.length > 0
+                        ? sgsts
+                        : ["SGST 5%", "SGST 12%", "SGST 18%", "SGST 28%"]
+                      ).map((gst, index) => (
+                        <option key={index} value={gst}>
+                          {gst}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      SGST Amount 2
+                    </label>
+                    <input
+                      type="number"
+                      name="sgstAmount2"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.sgstAmount2}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      CGST 2
+                    </label>
+                    <select
+                      name="cgst2"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.cgst2}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select CGST 2</option>
+                      {(cgsts.length > 0
+                        ? cgsts
+                        : ["CGST 5%", "CGST 12%", "CGST 18%", "CGST 28%"]
+                      ).map((gst, index) => (
+                        <option key={index} value={gst}>
+                          {gst}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      CGST Amount 2
+                    </label>
+                    <input
+                      type="number"
+                      name="cgstAmount2"
+                      className="w-full border rounded p-2 bg-white"
+                      value={formData.cgstAmount2}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Total Amount Display */}
+            <div className="mt-4 p-4 bg-green-50 rounded-lg">
+              <div className="w-full">
+                <label className="block text-lg font-medium text-gray-700 mb-2">
+                  Final Total Amount{" "}
+                  <span className="text-sm text-gray-500">
+                    (Auto-calculated from base + taxes, but editable)
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="total"
+                  className="w-full border rounded p-3 bg-white text-xl font-bold"
+                  value={formData.total}
+                  onChange={handleChange}
+                  placeholder="Auto-calculated or enter manually"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+          {/* Description and Documents */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Additional Information
+            </h3>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Enter invoice description or notes..."
+                  className="w-full border border-gray-300 p-3 rounded-lg bg-white resize-none"
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Receipt Document
+                  </label>
+                  <input
+                    type="file"
+                    name="receipt"
+                    className="w-full border rounded p-2 bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Approval Document
+                  </label>
+                  <input
+                    type="file"
+                    name="approvalDoc"
+                    className="w-full border rounded p-2 bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex justify-end pt-4 border-t">
             <button
               type="submit"
-              className={`bg-[#D7E6C5] text-black px-4 py-2 rounded ${
-                isSubmitting ? "cursor-not-allowed" : "cursor-pointer"
+              className={`bg-[#D7E6C5] text-black px-8 py-3 rounded-lg font-semibold hover:bg-[#c9d9b8] transition-colors ${
+                isSubmitting
+                  ? "cursor-not-allowed opacity-50"
+                  : "cursor-pointer"
               }`}
               disabled={isSubmitting}
             >
               {isSubmitting ? (
-                <svg
-                  className="animate-spin h-5 w-5 text-black"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
+                <div className="flex items-center">
+                  <svg
+                    className="animate-spin h-5 w-5 text-black mr-2"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Saving...
+                </div>
               ) : (
                 "Save Invoice"
               )}

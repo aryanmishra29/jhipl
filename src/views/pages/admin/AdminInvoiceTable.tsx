@@ -6,6 +6,7 @@ import {
   FaCheck,
   FaTimes,
   FaClock,
+  FaPlus,
 } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import Modal from "react-modal";
@@ -152,6 +153,10 @@ const AdminInvoiceTable: React.FC = () => {
   const [sgsts, setSgsts] = useState<string[]>([]);
   const [igsts, setIgsts] = useState<string[]>([]);
 
+  const [costCenterRows, setCostCenterRows] = useState([
+    { costCenter: "", amount: "" },
+  ]);
+
   const [searchFilteredInvoices, setSearchFilteredInvoices] =
     useState<Invoice[]>(filteredInvoices);
 
@@ -239,8 +244,136 @@ const AdminInvoiceTable: React.FC = () => {
     return (baseAmount * taxPercentage).toFixed(2);
   };
 
+  // Function to add a new cost center row
+  const addCostCenterRow = () => {
+    setCostCenterRows([...costCenterRows, { costCenter: "", amount: "" }]);
+  };
+
+  // Function to remove a cost center row
+  const removeCostCenterRow = (index: number) => {
+    if (costCenterRows.length > 1) {
+      const newRows = costCenterRows.filter((_, i) => i !== index);
+      setCostCenterRows(newRows);
+      updateBaseAmountFromCostCenters(newRows);
+    }
+  };
+
+  // Function to update cost center row
+  const updateCostCenterRow = (index: number, field: string, value: string) => {
+    const newRows = [...costCenterRows];
+    newRows[index] = { ...newRows[index], [field]: value };
+    setCostCenterRows(newRows);
+    if (field === "amount") {
+      updateBaseAmountFromCostCenters(newRows);
+    }
+  };
+
+  // Function to calculate base amount from cost center amounts
+  const updateBaseAmountFromCostCenters = (rows: typeof costCenterRows) => {
+    const totalAmount = rows.reduce((sum, row) => {
+      const amount = parseFloat(row.amount) || 0;
+      return sum + amount;
+    }, 0);
+
+    setFormData((prev) => ({
+      ...prev,
+      baseAmount: totalAmount.toFixed(2),
+    }));
+
+    // Recalculate tax amounts based on new base amount
+    recalculateTaxes(totalAmount);
+  };
+
+  // Function to recalculate all tax amounts when base amount changes
+  const recalculateTaxes = (baseAmount: number) => {
+    const igstPercentage = parseTax(formData.igst) / 100;
+    const igstAmount = (baseAmount * igstPercentage).toFixed(4);
+    const sgstPercentage = parseTax(formData.sgst) / 100;
+    const sgstAmount = (baseAmount * sgstPercentage).toFixed(4);
+    const cgstPercentage = parseTax(formData.cgst) / 100;
+    const cgstAmount = (baseAmount * cgstPercentage).toFixed(4);
+    const igstPercentage2 = parseTax(formData.igst2) / 100;
+    const igstAmount2 = (baseAmount * igstPercentage2).toFixed(4);
+    const sgstPercentage2 = parseTax(formData.sgst2) / 100;
+    const sgstAmount2 = (baseAmount * sgstPercentage2).toFixed(4);
+    const cgstPercentage2 = parseTax(formData.cgst2) / 100;
+    const cgstAmount2 = (baseAmount * cgstPercentage2).toFixed(4);
+
+    setFormData((prev) => ({
+      ...prev,
+      igstAmount: igstAmount,
+      sgstAmount: sgstAmount,
+      cgstAmount: cgstAmount,
+      igstAmount2: igstAmount2,
+      sgstAmount2: sgstAmount2,
+      cgstAmount2: cgstAmount2,
+      total: (
+        baseAmount +
+        parseFloat(igstAmount) +
+        parseFloat(sgstAmount) +
+        parseFloat(cgstAmount) +
+        parseFloat(igstAmount2) +
+        parseFloat(sgstAmount2) +
+        parseFloat(cgstAmount2)
+      ).toFixed(4),
+    }));
+  };
+
   const handleEditClick = async (invoice: Invoice) => {
     setSelectedInvoice(invoice);
+
+    // Get detailed invoice data to fetch baseAmountSplitForCostCenters
+    try {
+      const response = await fetch(`${baseUrl}/invoices/${invoice.invoiceId}`);
+      if (response.ok) {
+        const detailedInvoice = await response.json();
+
+        // Parse cost centers and amounts
+        const costCenterArray = invoice.costCenter
+          .split(";")
+          .filter((cc) => cc.trim() !== "");
+        const amountArray = detailedInvoice.baseAmountSplitForCostCenters || [];
+
+        // If baseAmountSplitForCostCenters is null/empty, use baseAmount for single cost center
+        if (!amountArray || amountArray.length === 0) {
+          setCostCenterRows([
+            {
+              costCenter: costCenterArray[0] || invoice.costCenter,
+              amount: invoice.baseAmount.toFixed(2),
+            },
+          ]);
+        } else {
+          // Create cost center rows with split amounts
+          const rows = costCenterArray.map((costCenter, index) => ({
+            costCenter: costCenter.trim(),
+            amount: amountArray[index] ? amountArray[index].toString() : "",
+          }));
+
+          // Ensure at least one row
+          setCostCenterRows(
+            rows.length > 0 ? rows : [{ costCenter: "", amount: "" }]
+          );
+        }
+      } else {
+        // Fallback to single cost center if detailed data fetch fails
+        setCostCenterRows([
+          {
+            costCenter: invoice.costCenter,
+            amount: invoice.baseAmount.toFixed(2),
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error fetching detailed invoice data:", error);
+      // Fallback to single cost center
+      setCostCenterRows([
+        {
+          costCenter: invoice.costCenter.split(";")[0] || "",
+          amount: invoice.baseAmount.toFixed(2),
+        },
+      ]);
+    }
+
     setFormData({
       invoiceId: invoice.invoiceId,
       invoiceNumber: invoice.number,
@@ -337,6 +470,8 @@ const AdminInvoiceTable: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedInvoice(null);
+    // Reset cost center rows
+    setCostCenterRows([{ costCenter: "", amount: "" }]);
   };
 
   const fetchInvoices = async () => {
@@ -734,18 +869,38 @@ const AdminInvoiceTable: React.FC = () => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
+
+    // Validate cost center rows
+    const hasValidCostCenters = costCenterRows.every(
+      (row) => row.costCenter && row.amount
+    );
+    if (!hasValidCostCenters) {
+      alert("Please fill in all cost centers and amounts.");
+      setIsSubmitting(false);
+      return;
+    }
+
     if (formData) {
+      // Prepare cost center data
+      const costCenterString = costCenterRows
+        .map((row) => row.costCenter)
+        .join(";");
+      const baseAmountSplitForCostCenters = costCenterRows.map((row) =>
+        parseFloat(row.amount)
+      );
+
       const updateRequest = {
         invoiceId: formData.invoiceId,
         number: formData.invoiceNumber,
         glCode: formData.glCode,
-        costCenter: formData.costCenter,
-        paymentType: formData.paymentType,
-        poId: poDetails.get(formData.poNumber),
+        costCenter: costCenterString,
+        baseAmountSplitForCostCenters: baseAmountSplitForCostCenters, // Send as Double array
+        poId: poDetails.get(formData.poNumber) || "",
         date: formData.invoiceDate,
-        baseAmount: Number(formData.baseAmount),
-        finalAmount: Number(formData.total),
+        baseAmount: parseFloat(formData.baseAmount),
+        finalAmount: parseFloat(formData.total),
         vendor: formData.companyName,
+        paymentType: formData.paymentType,
         sgst: formData.sgst,
         sgstAmount: parseFloat(formData.sgstAmount),
         cgst: formData.cgst,
@@ -767,6 +922,7 @@ const AdminInvoiceTable: React.FC = () => {
       };
 
       try {
+        console.log("Sending update request:", updateRequest);
         const response = await fetch(`${baseUrl}/invoices/update`, {
           method: "POST",
           headers: {
@@ -1007,7 +1163,7 @@ const AdminInvoiceTable: React.FC = () => {
                   {invoice.finalAmount}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
-                  {invoice.costCenter}
+                  {invoice.costCenter.replace(/;/g, ", ")}
                 </td>
                 <td className="py-2 px-4 text-center border-b">
                   <div
@@ -1046,16 +1202,16 @@ const AdminInvoiceTable: React.FC = () => {
           style={customStyles}
           contentLabel="Invoice Modal"
         >
-          <h2 className="text-2xl font-bold mb-4">Edit Invoice</h2>
+          <h2 className="text-2xl font-bold mb-6">Edit Invoice</h2>
           {isRestrictedAdmin() && (
-            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6">
               <p>
                 You have limited permissions. You can only edit the Status and
                 Description fields.
               </p>
             </div>
           )}
-          <form onSubmit={handleSave}>
+          <form onSubmit={handleSave} className="max-h-[80vh] overflow-y-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
               <div>
                 <label className="text-gray-500">Invoice Number</label>
@@ -1106,25 +1262,116 @@ const AdminInvoiceTable: React.FC = () => {
                   disabled={isRestrictedAdmin()}
                 />
               </div>
-              <div>
-                <label className="text-gray-500">Cost Center</label>
-                <select
-                  name="costCenter"
-                  className={`w-full border rounded p-2 bg-white ${
-                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
-                  }`}
-                  value={formData.costCenter}
-                  onChange={handleChange}
-                  required
-                  disabled={isRestrictedAdmin()}
-                >
-                  <option value="">Select Cost Center</option>
-                  {costCenters.map((center, index) => (
-                    <option key={index} value={center}>
-                      {center}
-                    </option>
+              <div className="col-span-2">
+                <label className="text-gray-500 block mb-2">Cost Centers</label>
+                <div className="space-y-3">
+                  {costCenterRows.map((row, index) => (
+                    <div
+                      key={index}
+                      className="flex gap-3 items-end p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-500 mb-1">
+                          Cost Center
+                        </label>
+                        {isRestrictedAdmin() ? (
+                          <input
+                            type="text"
+                            className="w-full border rounded p-2 bg-gray-100 cursor-not-allowed"
+                            value={row.costCenter}
+                            disabled
+                          />
+                        ) : (
+                          <SearchableDropdown
+                            name={`costCenter-${index}`}
+                            options={
+                              costCenters.length > 0 ? costCenters : ["N/A"]
+                            }
+                            value={row.costCenter}
+                            onChange={(e) =>
+                              updateCostCenterRow(
+                                index,
+                                "costCenter",
+                                e.target.value as string
+                              )
+                            }
+                            placeholder="Select Cost Center"
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-500 mb-1">
+                          Amount
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          className={`w-full border rounded p-2 bg-white ${
+                            isRestrictedAdmin()
+                              ? "bg-gray-100 cursor-not-allowed"
+                              : ""
+                          }`}
+                          value={row.amount}
+                          onChange={(e) =>
+                            updateCostCenterRow(index, "amount", e.target.value)
+                          }
+                          disabled={isRestrictedAdmin()}
+                          required
+                        />
+                      </div>
+                      {!isRestrictedAdmin() && (
+                        <div className="flex gap-2">
+                          {index === 0 && (
+                            <button
+                              type="button"
+                              onClick={addCostCenterRow}
+                              className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 transition-colors"
+                              title="Add Cost Center"
+                            >
+                              <FaPlus />
+                            </button>
+                          )}
+                          {costCenterRows.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeCostCenterRow(index)}
+                              className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition-colors"
+                              title="Remove Cost Center"
+                            >
+                              <FaTimes />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   ))}
-                </select>
+                </div>
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-gray-600 mb-1">
+                      Base Amount{" "}
+                      <span className="text-xs text-gray-500">
+                        (Auto-calculated from cost centers, but editable)
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="baseAmount"
+                      className={`w-full border rounded p-3 bg-white text-lg font-semibold ${
+                        isRestrictedAdmin()
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : ""
+                      }`}
+                      value={formData.baseAmount}
+                      onChange={handleChange}
+                      placeholder="Auto-calculated or enter manually"
+                      required
+                      disabled={isRestrictedAdmin()}
+                    />
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="text-gray-500">PO Number</label>
@@ -1168,7 +1415,7 @@ const AdminInvoiceTable: React.FC = () => {
               </div>
             </div>
 
-            <div className="  grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
               <div>
                 <label className="text-gray-500">Company Name</label>
                 <select
@@ -1189,20 +1436,7 @@ const AdminInvoiceTable: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="text-gray-500">Base Amount</label>
-                <input
-                  type="number"
-                  name="baseAmount"
-                  className={`w-full border rounded p-2 bg-white ${
-                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
-                  }`}
-                  value={formData.baseAmount}
-                  onChange={handleChange}
-                  required
-                  disabled={isRestrictedAdmin()}
-                />
-              </div>
+
               <div>
                 <label className="text-gray-500">IGST</label>
                 <select
@@ -1427,19 +1661,31 @@ const AdminInvoiceTable: React.FC = () => {
                 </p>
               </div>
 
-              <div>
-                <label className="text-gray-500">Total</label>
-                <input
-                  type="number"
-                  name="total"
-                  className={`w-full border rounded p-2 bg-white ${
-                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
-                  }`}
-                  value={formData.total}
-                  onChange={handleChange}
-                  required
-                  disabled={isRestrictedAdmin()}
-                />
+              {/* Total Amount Display */}
+              <div className="mt-4 p-4 bg-green-50 rounded-lg col-span-2">
+                <div className="w-full">
+                  <label className="block text-lg font-medium text-gray-700 mb-2">
+                    Final Total Amount{" "}
+                    <span className="text-sm text-gray-500">
+                      (Auto-calculated from base + taxes, but editable)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="total"
+                    className={`w-full border rounded p-3 bg-white text-xl font-bold ${
+                      isRestrictedAdmin()
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : ""
+                    }`}
+                    value={formData.total}
+                    onChange={handleChange}
+                    placeholder="Auto-calculated or enter manually"
+                    required
+                    disabled={isRestrictedAdmin()}
+                  />
+                </div>
               </div>
             </div>
             <div className="flex justify-between gap-6">
@@ -1529,35 +1775,41 @@ const AdminInvoiceTable: React.FC = () => {
                 <FaDownload className="ml-1" />
               </button>
             </div>
-            <div className=" flex justify-end">
+            {/* Submit Button */}
+            <div className="flex justify-end pt-4 border-t">
               <button
                 type="submit"
-                className={`bg-[#D7E6C5] text-black px-4 py-2 rounded ${
-                  isSubmitting ? "cursor-not-allowed" : "cursor-pointer"
+                className={`bg-[#D7E6C5] text-black px-8 py-3 rounded-lg font-semibold hover:bg-[#c9d9b8] transition-colors ${
+                  isSubmitting
+                    ? "cursor-not-allowed opacity-50"
+                    : "cursor-pointer"
                 }`}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <svg
-                    className="animate-spin h-5 w-5 text-black"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  <div className="flex items-center">
+                    <svg
+                      className="animate-spin h-5 w-5 text-black mr-2"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Saving...
+                  </div>
                 ) : (
                   "Save Invoice"
                 )}
@@ -1571,3 +1823,14 @@ const AdminInvoiceTable: React.FC = () => {
 };
 
 export default AdminInvoiceTable;
+
+/**
+ * AdminInvoiceTable Component
+ *
+ * Features:
+ * - Multiple cost centers with individual amounts
+ * - Auto-calculation of base amount from cost center totals
+ * - Beautiful modal design similar to Invoice.tsx
+ * - Form submission using FormData (similar to Invoice.tsx)
+ * - Admin permission handling
+ */
