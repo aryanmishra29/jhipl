@@ -20,6 +20,7 @@ interface Reimbursement {
   utrNo: string;
   userId: string;
   description: string;
+  comments: string;
 }
 
 const customStyles = {
@@ -412,6 +413,9 @@ const ReimbursementTable: React.FC = () => {
                 Cost Center
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Comments
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Status
               </th>
             </tr>
@@ -442,6 +446,12 @@ const ReimbursementTable: React.FC = () => {
                   </td>
                   <td className="py-2 px-4 text-start border-b">
                     {reimbursement.costCenter}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {reimbursement.comments &&
+                    reimbursement.comments.trim() !== ""
+                      ? reimbursement.comments
+                      : "-"}
                   </td>
                   <td className="py-2 px-4 text-center border-b">
                     <div

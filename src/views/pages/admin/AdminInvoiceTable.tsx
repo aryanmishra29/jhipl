@@ -48,6 +48,7 @@ interface Invoice {
   status: string;
   description: string;
   narration: string;
+  comments: string;
 }
 
 interface ExcelItem {
@@ -135,6 +136,7 @@ const AdminInvoiceTable: React.FC = () => {
     narration: "",
     status: "",
     utrNo: "",
+    comments: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [costCenters, setCostCenters] = useState<string[]>([]);
@@ -273,6 +275,7 @@ const AdminInvoiceTable: React.FC = () => {
       narration: invoice.narration,
       status: invoice.status,
       utrNo: invoice.utrNo,
+      comments: invoice.comments || "",
     });
     setIsModalOpen(true);
   };
@@ -760,6 +763,7 @@ const AdminInvoiceTable: React.FC = () => {
         status: formData.status,
         description: formData.description,
         narration: formData.narration,
+        comments: formData.comments,
       };
 
       try {
@@ -1493,6 +1497,17 @@ const AdminInvoiceTable: React.FC = () => {
                   disabled={isRestrictedAdmin()}
                 />
               </div>
+            </div>
+            <div className="mt-4">
+              <label className="text-gray-500">Comments</label>
+              <textarea
+                name="comments"
+                value={formData.comments}
+                onChange={handleChange}
+                placeholder="Add any comments here..."
+                className="w-full border rounded p-2 bg-white h-24 resize-none"
+                rows={3}
+              />
             </div>
             <div className="mt-6 flex gap-2">
               <button

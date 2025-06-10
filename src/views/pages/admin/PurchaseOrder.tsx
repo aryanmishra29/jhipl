@@ -18,6 +18,7 @@ interface PurchaseOrder {
   poRequestId: string;
   vendor: string;
   userId: string;
+  date: string;
 }
 
 const customStyles = {
@@ -77,7 +78,10 @@ const PurchaseOrder: React.FC = () => {
   const [sgsts, setSgsts] = useState<string[]>([]);
   const [igsts, setIgsts] = useState<string[]>([]);
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [activeTab, setActiveTab] = useState<"requests" | "orders">("requests");
 
   useEffect(() => {
     const fetchDropdownData = async () => {
@@ -121,13 +125,16 @@ const PurchaseOrder: React.FC = () => {
       poRequestId: item.poRequestId,
       comments: item.comments,
       userId: item.userId,
+      date: item.date,
     }));
 
     if (isRestrictedAdmin()) {
       const adminEmail = getRestrictedAdminEmail();
       if (adminEmail) {
         const allowedUserIds = getRestrictedAdminUserIds(adminEmail);
-        mappedData = mappedData.filter((po: any) => allowedUserIds.includes(po.userId));
+        mappedData = mappedData.filter((po: any) =>
+          allowedUserIds.includes(po.userId)
+        );
       }
     }
     setFilesData(mappedData);
@@ -147,6 +154,7 @@ const PurchaseOrder: React.FC = () => {
         finalAmount: po.finalAmount,
         vendor: po.vendor,
         userId: po.userId,
+        date: po.date,
       }));
       if (isRestrictedAdmin()) {
         const adminEmail = getRestrictedAdminEmail();
@@ -172,6 +180,8 @@ const PurchaseOrder: React.FC = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setIsAcceptModalOpen(false);
+    setIsRejectModalOpen(false);
+    setRejectReason("");
   };
 
   const handleChange = (
@@ -427,16 +437,30 @@ const PurchaseOrder: React.FC = () => {
     setIsAcceptModalOpen(true);
   };
 
-  const handleReject = async (poRequestId: string) => {
+  const handleReject = (poRequestId: string) => {
+    setSelectedPoId(poRequestId);
+    setIsRejectModalOpen(true);
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!rejectReason.trim()) {
+      alert("Please provide a reason for rejection.");
+      return;
+    }
+
     try {
       const response = await axios.post(
-        `${baseUrl}/purchase-orders/request/reject/${poRequestId}`
+        `${baseUrl}/purchase-orders/request/reject/${selectedPoId}?reason=${encodeURIComponent(
+          rejectReason
+        )}`
       );
       if (response.status === 200) {
         await fetchPendingPORequests();
+        closeModal();
       }
     } catch (error) {
       console.error("Error rejecting PO request:", error);
+      alert("Error rejecting PO request. Please try again.");
     }
   };
 
@@ -449,130 +473,232 @@ const PurchaseOrder: React.FC = () => {
 
   return (
     <>
-      <div className="overflow-x-auto border-b-2 h-[42vh] overflow-y-scroll scroll-smooth">
-        <div>
-          <h1 className="text-3xl text-black font-semibold sticky top-0 backdrop-blur-xl p-3">
-            PO Requests
-          </h1>
-          <table className="w-full h-full text-[#8E8F8E]  bg-white">
-            <thead className="min-w-full sticky top-14 backdrop-blur-xl">
-              <tr>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Requisition Form
-                </th>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Comparative Form
-                </th>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Quotation 1
-                </th>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Quotation 2
-                </th>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Quotation 3
-                </th>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Comments
-                </th>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody className="w-full">
-              {filesData.map((file) => (
-                <tr key={file.poRequestId} className="text-[#252525]">
-                  <td className="py-2 px-4 text-start border-b">
-                    <button
-                      onClick={() =>
-                        handleDownload(file.poRequestId, "requisition-form")
-                      }
-                      className="flex gap-2"
-                    >
-                      <Download className="w-5 h-5 text-gray-600" />
-                      <div className="text-gray-600 font-semibold">
-                        Download
-                      </div>
-                    </button>
-                  </td>
-                  <td className="py-2 px-4 text-start border-b">
-                    <button
-                      onClick={() =>
-                        handleDownload(file.poRequestId, "comparative-form")
-                      }
-                      className="flex gap-2"
-                    >
-                      <Download className="w-5 h-5 text-gray-600" />
-                      <div className="text-gray-600 font-semibold">
-                        Download
-                      </div>
-                    </button>
-                  </td>
-                  <td className="py-2 px-4 text-start border-b">
-                    <button
-                      onClick={() =>
-                        handleDownload(file.poRequestId, "quotation1")
-                      }
-                      className="flex gap-2"
-                    >
-                      <Download className="w-5 h-5 text-gray-600" />
-                      <div className="text-gray-600 font-semibold">
-                        Download
-                      </div>
-                    </button>
-                  </td>
-                  <td className="py-2 px-4 text-start border-b">
-                    <button
-                      onClick={() =>
-                        handleDownload(file.poRequestId, "quotation2")
-                      }
-                      className="flex gap-2"
-                    >
-                      <Download className="w-5 h-5 text-gray-600" />
-                      <div className="text-gray-600 font-semibold">
-                        Download
-                      </div>
-                    </button>
-                  </td>
-                  <td className="py-2 px-4 text-start border-b">
-                    <button
-                      onClick={() =>
-                        handleDownload(file.poRequestId, "quotation3")
-                      }
-                      className="flex gap-2"
-                    >
-                      <Download className="w-5 h-5 text-gray-600" />
-                      <div className="text-gray-600 font-semibold">
-                        Download
-                      </div>
-                    </button>
-                  </td>
-                  <td className="py-2 px-4 text-start border-b">
-                    {file.comments}
-                  </td>
-                  <td className="py-2 px-4 text-start flex border-b items-center h-full">
-                    <button
-                      className="px-4 flex gap-1 items-center py-2 bg-green-500 text-white rounded-md"
-                      onClick={() => handleAccept(file.poRequestId)}
-                    >
-                      <FaCheck />
-                      <div className="text-white font-semibold">Accept</div>
-                    </button>
-                    <button
-                      className="px-4 py-2 bg-red-500 flex items-center gap-1 text-white rounded-md ml-2"
-                      onClick={() => handleReject(file.poRequestId)}
-                    >
-                      <FaTimes />
-                      <div className="text-white font-semibold">Reject</div>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Tab Navigation */}
+      <div className="mb-6 px-3">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab("requests")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "requests"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              PO Requests ({filesData.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("orders")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "orders"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Purchase Orders ({purchaseOrders.length})
+            </button>
+          </nav>
         </div>
       </div>
+
+      {/* Tab Content */}
+      {activeTab === "requests" && (
+        <div className="overflow-x-auto h-[85vh] overflow-y-scroll scroll-smooth">
+          <div>
+            <h1 className="text-3xl text-black font-semibold sticky top-0 backdrop-blur-xl p-3">
+              PO Requests
+            </h1>
+            <table className="w-full h-full text-[#8E8F8E]  bg-white">
+              <thead className="min-w-full sticky top-14 backdrop-blur-xl">
+                <tr>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Date
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Requisition Form
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Comparative Form
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Quotation 1
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Quotation 2
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Quotation 3
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Comments
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="w-full">
+                {filesData.map((file) => (
+                  <tr key={file.poRequestId} className="text-[#252525]">
+                    <td className="py-2 px-4 text-start border-b">
+                      {file.date && file.date.trim() !== "" ? file.date : "-"}
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      <button
+                        onClick={() =>
+                          handleDownload(file.poRequestId, "requisition-form")
+                        }
+                        className="flex gap-2"
+                      >
+                        <Download className="w-5 h-5 text-gray-600" />
+                        <div className="text-gray-600 font-semibold">
+                          Download
+                        </div>
+                      </button>
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      <button
+                        onClick={() =>
+                          handleDownload(file.poRequestId, "comparative-form")
+                        }
+                        className="flex gap-2"
+                      >
+                        <Download className="w-5 h-5 text-gray-600" />
+                        <div className="text-gray-600 font-semibold">
+                          Download
+                        </div>
+                      </button>
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      <button
+                        onClick={() =>
+                          handleDownload(file.poRequestId, "quotation1")
+                        }
+                        className="flex gap-2"
+                      >
+                        <Download className="w-5 h-5 text-gray-600" />
+                        <div className="text-gray-600 font-semibold">
+                          Download
+                        </div>
+                      </button>
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      <button
+                        onClick={() =>
+                          handleDownload(file.poRequestId, "quotation2")
+                        }
+                        className="flex gap-2"
+                      >
+                        <Download className="w-5 h-5 text-gray-600" />
+                        <div className="text-gray-600 font-semibold">
+                          Download
+                        </div>
+                      </button>
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      <button
+                        onClick={() =>
+                          handleDownload(file.poRequestId, "quotation3")
+                        }
+                        className="flex gap-2"
+                      >
+                        <Download className="w-5 h-5 text-gray-600" />
+                        <div className="text-gray-600 font-semibold">
+                          Download
+                        </div>
+                      </button>
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      {file.comments}
+                    </td>
+                    <td className="py-2 px-4 text-start flex border-b items-center h-full">
+                      <button
+                        className="px-4 flex gap-1 items-center py-2 bg-green-500 text-white rounded-md"
+                        onClick={() => handleAccept(file.poRequestId)}
+                      >
+                        <FaCheck />
+                        <div className="text-white font-semibold">Accept</div>
+                      </button>
+                      <button
+                        className="px-4 py-2 bg-red-500 flex items-center gap-1 text-white rounded-md ml-2"
+                        onClick={() => handleReject(file.poRequestId)}
+                      >
+                        <FaTimes />
+                        <div className="text-white font-semibold">Reject</div>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "orders" && (
+        <div className="overflow-x-auto h-[85vh] overflow-y-scroll scroll-smooth">
+          <div>
+            <h1 className="text-3xl text-black font-semibold sticky top-0 backdrop-blur-xl p-3">
+              Purchase Orders
+            </h1>
+            <table className="w-full h-full text-[rgb(142,143,142)] bg-white">
+              <thead className="min-w-full sticky top-14 backdrop-blur-xl">
+                <tr>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Date
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    PO Number
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Vendor
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Remaining Amount
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Final Amount
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Documents
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="w-full">
+                {purchaseOrders.map((po) => (
+                  <tr key={po.poId} className="text-[#252525]">
+                    <td className="py-2 px-4 text-start border-b">
+                      {po.date && po.date.trim() !== "" ? po.date : "-"}
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      {po.poNumber}
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      {po.vendor}
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      {po.remainingAmount}
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      {po.finalAmount.toFixed(2)}
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      <button
+                        className="bg-gray-200 px-4 rounded-lg py-2"
+                        onClick={() =>
+                          handleDownloadClick(po.poRequestId, po.poId)
+                        }
+                      >
+                        Download
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Add PO Modal */}
       <Modal
@@ -829,60 +955,49 @@ const PurchaseOrder: React.FC = () => {
           </div>
         </form>
       </Modal>
-      <div className="overflow-x-auto h-[42vh] overflow-y-scroll scroll-smooth">
-        <div>
-          <h1 className="text-3xl text-black font-semibold sticky top-0 backdrop-blur-xl  p-3">
-            Purchase Orders
-          </h1>
-          <table className="w-full h-full text-[rgb(142,143,142)] bg-white">
-            <thead className="min-w-full sticky top-14 backdrop-blur-xl">
-              <tr>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  PO Number
-                </th>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Vendor
-                </th>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Remaining Amount
-                </th>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Final Amount
-                </th>
-                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Documents
-                </th>
-              </tr>
-            </thead>
-            <tbody className="w-full">
-              {purchaseOrders.map((po) => (
-                <tr key={po.poId} className="text-[#252525]">
-                  <td className="py-2 px-4 text-start border-b">
-                    {po.poNumber}
-                  </td>
-                  <td className="py-2 px-4 text-start border-b">{po.vendor}</td>
-                  <td className="py-2 px-4 text-start border-b">
-                    {po.remainingAmount}
-                  </td>
-                  <td className="py-2 px-4 text-start border-b">
-                    {po.finalAmount.toFixed(2)}
-                  </td>
-                  <td className="py-2 px-4 text-start border-b">
-                    <button
-                      className="bg-gray-200 px-4 rounded-lg py-2"
-                      onClick={() =>
-                        handleDownloadClick(po.poRequestId, po.poId)
-                      }
-                    >
-                      Download
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+      {/* Reject PO Modal */}
+      <Modal
+        isOpen={isRejectModalOpen}
+        onRequestClose={() => setIsRejectModalOpen(false)}
+        style={customStyles}
+        contentLabel="Reject PO Modal"
+      >
+        <h2 className="text-lg font-bold mb-4 text-red-600">
+          Reject Purchase Order Request
+        </h2>
+        <div className="mb-4">
+          <p className="text-gray-700 mb-2">
+            Are you sure you want to reject this PO request?
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            Please provide a reason for rejection:
+          </p>
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Enter reason for rejection..."
+            className="w-full p-3 border border-gray-300 rounded-md shadow-sm bg-transparent resize-none min-h-[100px]"
+            required
+          />
         </div>
-      </div>
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+            onClick={closeModal}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+            onClick={handleRejectSubmit}
+          >
+            Reject PO Request
+          </button>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={isPurchaseModalOpen}

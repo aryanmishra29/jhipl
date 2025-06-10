@@ -32,6 +32,7 @@ interface Reimbursement {
   status: string;
   description: string;
   narration: string;
+  comments: string;
 }
 interface ExcelItem {
   voucherType: string;
@@ -537,6 +538,9 @@ const AdminReimbursementTable: React.FC = () => {
                   Cost Center
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Comments
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Status
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
@@ -566,6 +570,12 @@ const AdminReimbursementTable: React.FC = () => {
                     </td>
                     <td className="py-2 px-4 text-start border-b">
                       {reimbursement.costCenter}
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      {reimbursement.comments &&
+                      reimbursement.comments.trim() !== ""
+                        ? reimbursement.comments
+                        : "-"}
                     </td>
                     <td className="py-2 px-4 text-center border-b">
                       <div
@@ -739,6 +749,14 @@ const AdminReimbursementTable: React.FC = () => {
               isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
             }`}
             disabled={isRestrictedAdmin()}
+          />
+          <input
+            type="text"
+            name="comments"
+            value={selectedReimbursement?.comments || ""}
+            onChange={handleInputChange}
+            placeholder="Comments"
+            className="border bg-transparent rounded p-2 w-full col-span-2"
           />
         </div>
         <div className="py-2 flex space-x-2 mt-4">

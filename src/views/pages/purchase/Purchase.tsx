@@ -33,7 +33,9 @@ const customStyles = {
 const Purchase: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
+  const [poRequests, setPORequests] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"requests" | "orders">("requests");
   const [formData, setFormData] = useState({
     requisitionForm: null as File | null,
     comparativeForm: null as File | null,
@@ -61,8 +63,23 @@ const Purchase: React.FC = () => {
     }
   };
 
+  const fetchPORequests = async () => {
+    try {
+      const response = await axios.get(
+        `${baseUrl}/purchase-orders/request/user/${user_id}`
+      );
+      if (response.status !== 200) {
+        throw new Error("Failed to fetch PO requests");
+      }
+      setPORequests(response.data);
+    } catch (error) {
+      console.error("Error fetching PO requests:", error);
+    }
+  };
+
   useEffect(() => {
     fetchPurchaseOrders();
+    fetchPORequests();
   }, []);
 
   const openModal = () => {
@@ -139,6 +156,7 @@ const Purchase: React.FC = () => {
       if (response.status === 200) {
         closeModal();
         fetchPurchaseOrders();
+        fetchPORequests();
       } else {
         throw new Error(`Unexpected response status: ${response.status}`);
       }
@@ -165,46 +183,137 @@ const Purchase: React.FC = () => {
           </div>
         </div>
       </div>
-      <div className="overflow-auto scroll-smooth max-h-[70vh]">
-        <table className="w-full h-full text-[#8E8F8E] bg-white">
-          <thead className="min-w-full">
-            <tr>
-              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                PO Number
-              </th>
-              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                Date
-              </th>
-              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                Remaining Amount
-              </th>
-              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                Final Amount
-              </th>
-              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                Payment Type
-              </th>
-            </tr>
-          </thead>
-          <tbody className="w-full">
-            {purchaseOrders.map((po) => (
-              <tr key={po.poId} className="text-[#252525]">
-                <td className="py-2 px-4 text-start border-b">{po.poNumber}</td>
-                <td className="py-2 px-4 text-start border-b">{po.date}</td>
-                <td className="py-2 px-4 text-start border-b">
-                  {po.remainingAmount}
-                </td>
-                <td className="py-2 px-4 text-start border-b">
-                  {po.finalAmount.toFixed(4)}
-                </td>
-                <td className="py-2 px-4 text-start border-b">
-                  {po.paymentType}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      {/* Tab Navigation */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab("requests")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "requests"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              My PO Requests ({poRequests.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("orders")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "orders"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              My Purchase Orders ({purchaseOrders.length})
+            </button>
+          </nav>
+        </div>
       </div>
+
+      {/* Tab Content */}
+      <div className="overflow-auto scroll-smooth max-h-[70vh]">
+        {activeTab === "requests" && (
+          <table className="w-full h-full text-[#8E8F8E] bg-white">
+            <thead className="min-w-full sticky top-0 backdrop-blur-xl">
+              <tr>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Date
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Status
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Comments
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Reason of Rejection
+                </th>
+              </tr>
+            </thead>
+            <tbody className="w-full">
+              {poRequests.map((request) => (
+                <tr key={request.poRequestId} className="text-[#252525]">
+                  <td className="py-2 px-4 text-start border-b">
+                    {request.date && request.date.trim() !== ""
+                      ? request.date
+                      : "-"}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        request.status === "PENDING"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : request.status === "APPROVED"
+                          ? "bg-green-100 text-green-800"
+                          : request.status === "REJECTED"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {request.status}
+                    </span>
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {request.comments || "-"}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {request.reasonOfRejection &&
+                    request.reasonOfRejection.trim() !== ""
+                      ? request.reasonOfRejection
+                      : "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {activeTab === "orders" && (
+          <table className="w-full h-full text-[#8E8F8E] bg-white">
+            <thead className="min-w-full sticky top-0 backdrop-blur-xl">
+              <tr>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  PO Number
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Date
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Remaining Amount
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Final Amount
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Payment Type
+                </th>
+              </tr>
+            </thead>
+            <tbody className="w-full">
+              {purchaseOrders.map((po) => (
+                <tr key={po.poId} className="text-[#252525]">
+                  <td className="py-2 px-4 text-start border-b">
+                    {po.poNumber}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">{po.date}</td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {po.remainingAmount}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {po.finalAmount.toFixed(4)}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {po.paymentType}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
       <Modal
         isOpen={isModalOpen}
         onRequestClose={closeModal}

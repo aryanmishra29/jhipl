@@ -20,6 +20,7 @@ interface Invoice {
   finalAmount: number;
   status: string;
   utrNo: string;
+  comments: string;
 }
 
 // Define the PO details interface
@@ -221,6 +222,7 @@ const InvoiceTable: React.FC = () => {
         finalAmount: invoice.finalAmount,
         status: invoice.status,
         utrNo: invoice.utrNo,
+        comments: invoice.comments,
       }));
       setInvoices(data);
       setFilteredInvoices(data);
@@ -856,6 +858,9 @@ const InvoiceTable: React.FC = () => {
                 UTR No.
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Comments
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Status
               </th>
             </tr>
@@ -884,6 +889,11 @@ const InvoiceTable: React.FC = () => {
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.utrNo}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.comments && invoice.comments.trim() !== ""
+                    ? invoice.comments
+                    : "-"}
                 </td>
                 <td className="py-2 px-4 text-center border-b">
                   <div
