@@ -541,6 +541,9 @@ const AdminReimbursementTable: React.FC = () => {
                   Comments
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  UTR No
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Status
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
@@ -576,6 +579,9 @@ const AdminReimbursementTable: React.FC = () => {
                       reimbursement.comments.trim() !== ""
                         ? reimbursement.comments
                         : "-"}
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      {reimbursement.utrNo || "-"}
                     </td>
                     <td className="py-2 px-4 text-center border-b">
                       <div

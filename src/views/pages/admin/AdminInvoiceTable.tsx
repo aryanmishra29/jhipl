@@ -1134,6 +1134,12 @@ const AdminInvoiceTable: React.FC = () => {
                 Status
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Comments
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                UTR No
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Actions
               </th>
             </tr>
@@ -1181,6 +1187,12 @@ const AdminInvoiceTable: React.FC = () => {
                       <FaTimes />
                     )}
                   </div>
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.comments || "-"}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.utrNo || "-"}
                 </td>
                 <td className="py-2 px-4 border-b">
                   <button
