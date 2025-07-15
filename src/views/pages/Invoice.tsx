@@ -1413,9 +1413,14 @@ const InvoiceTable: React.FC = () => {
                     <input
                       type="number"
                       name="igstAmount"
-                      className="w-full border rounded p-2 bg-white"
+                      className={`w-full border rounded p-2 ${
+                        formData.igst === "0" || formData.igst === ""
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : "bg-white"
+                      }`}
                       value={formData.igstAmount}
                       onChange={handleChange}
+                      disabled={formData.igst === "0" || formData.igst === ""}
                       required
                     />
                   </div>
@@ -1448,9 +1453,14 @@ const InvoiceTable: React.FC = () => {
                     <input
                       type="number"
                       name="sgstAmount"
-                      className="w-full border rounded p-2 bg-white"
+                      className={`w-full border rounded p-2 ${
+                        formData.sgst === "0" || formData.sgst === ""
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : "bg-white"
+                      }`}
                       value={formData.sgstAmount}
                       onChange={handleChange}
+                      disabled={formData.sgst === "0" || formData.sgst === ""}
                       required
                     />
                   </div>
@@ -1483,9 +1493,14 @@ const InvoiceTable: React.FC = () => {
                     <input
                       type="number"
                       name="cgstAmount"
-                      className="w-full border rounded p-2 bg-white"
+                      className={`w-full border rounded p-2 ${
+                        formData.cgst === "0" || formData.cgst === ""
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : "bg-white"
+                      }`}
                       value={formData.cgstAmount}
                       onChange={handleChange}
+                      disabled={formData.cgst === "0" || formData.cgst === ""}
                       required
                     />
                   </div>
@@ -1527,9 +1542,14 @@ const InvoiceTable: React.FC = () => {
                     <input
                       type="number"
                       name="igstAmount2"
-                      className="w-full border rounded p-2 bg-white"
+                      className={`w-full border rounded p-2 ${
+                        formData.igst2 === "0" || formData.igst2 === ""
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : "bg-white"
+                      }`}
                       value={formData.igstAmount2}
                       onChange={handleChange}
+                      disabled={formData.igst2 === "0" || formData.igst2 === ""}
                       required
                     />
                   </div>
@@ -1562,9 +1582,14 @@ const InvoiceTable: React.FC = () => {
                     <input
                       type="number"
                       name="sgstAmount2"
-                      className="w-full border rounded p-2 bg-white"
+                      className={`w-full border rounded p-2 ${
+                        formData.sgst2 === "0" || formData.sgst2 === ""
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : "bg-white"
+                      }`}
                       value={formData.sgstAmount2}
                       onChange={handleChange}
+                      disabled={formData.sgst2 === "0" || formData.sgst2 === ""}
                       required
                     />
                   </div>
@@ -1597,9 +1622,14 @@ const InvoiceTable: React.FC = () => {
                     <input
                       type="number"
                       name="cgstAmount2"
-                      className="w-full border rounded p-2 bg-white"
+                      className={`w-full border rounded p-2 ${
+                        formData.cgst2 === "0" || formData.cgst2 === ""
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : "bg-white"
+                      }`}
                       value={formData.cgstAmount2}
                       onChange={handleChange}
+                      disabled={formData.cgst2 === "0" || formData.cgst2 === ""}
                       required
                     />
                   </div>
