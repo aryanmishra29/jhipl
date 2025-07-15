@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FaPlus } from "react-icons/fa";
+import { Search } from "lucide-react";
 import Modal from "react-modal";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -34,9 +35,15 @@ const Purchase: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [poRequests, setPORequests] = useState<any[]>([]);
+  const [filteredPurchaseOrders, setFilteredPurchaseOrders] = useState<any[]>(
+    []
+  );
+  const [filteredPORequests, setFilteredPORequests] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"requests" | "orders">("requests");
   const [formData, setFormData] = useState({
+    requisitionNumber: "",
     requisitionForm: null as File | null,
     comparativeForm: null as File | null,
     quotation1: null as File | null,
@@ -49,6 +56,27 @@ const Purchase: React.FC = () => {
   // const baseUrl = "http://localhost:8080";
   const user_id = localStorage.getItem("userId") || "";
 
+  // Search functionality
+  useEffect(() => {
+    const filteredRequests = poRequests.filter((request) => {
+      if (request.requisitionNumber || request.requisitionNumber === "") {
+        return request.requisitionNumber
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase());
+      }
+      return true;
+    });
+    setFilteredPORequests(filteredRequests);
+
+    const filteredOrders = purchaseOrders.filter(
+      (order) =>
+        order.vendor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.poNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ""
+    );
+    setFilteredPurchaseOrders(filteredOrders);
+  }, [searchTerm, poRequests, purchaseOrders]);
+
   const fetchPurchaseOrders = async () => {
     try {
       const response = await axios.get(
@@ -57,7 +85,26 @@ const Purchase: React.FC = () => {
       if (response.status !== 200) {
         throw new Error("Failed to fetch purchase orders");
       }
-      setPurchaseOrders(response.data);
+      // Sort by date in descending order (newest first), put null/empty dates last
+      const sortedData = response.data.sort((a: any, b: any) => {
+        // Handle null, empty, or invalid dates
+        const dateA = a.date && a.date.trim() !== "" ? new Date(a.date) : null;
+        const dateB = b.date && b.date.trim() !== "" ? new Date(b.date) : null;
+
+        // If both dates are null/empty, maintain original order
+        if (!dateA && !dateB) return 0;
+
+        // If only dateA is null/empty, put it after dateB
+        if (!dateA) return 1;
+
+        // If only dateB is null/empty, put it after dateA
+        if (!dateB) return -1;
+
+        // If both dates are valid, sort in descending order (newest first)
+        return dateB.getTime() - dateA.getTime();
+      });
+      setPurchaseOrders(sortedData);
+      setFilteredPurchaseOrders(sortedData);
     } catch (error) {
       console.error("Error fetching purchase orders:", error);
     }
@@ -71,7 +118,26 @@ const Purchase: React.FC = () => {
       if (response.status !== 200) {
         throw new Error("Failed to fetch PO requests");
       }
-      setPORequests(response.data);
+      // Sort by date in descending order (newest first), put null/empty dates last
+      const sortedData = response.data.sort((a: any, b: any) => {
+        // Handle null, empty, or invalid dates
+        const dateA = a.date && a.date.trim() !== "" ? new Date(a.date) : null;
+        const dateB = b.date && b.date.trim() !== "" ? new Date(b.date) : null;
+
+        // If both dates are null/empty, maintain original order
+        if (!dateA && !dateB) return 0;
+
+        // If only dateA is null/empty, put it after dateB
+        if (!dateA) return 1;
+
+        // If only dateB is null/empty, put it after dateA
+        if (!dateB) return -1;
+
+        // If both dates are valid, sort in descending order (newest first)
+        return dateB.getTime() - dateA.getTime();
+      });
+      setPORequests(sortedData);
+      setFilteredPORequests(sortedData);
     } catch (error) {
       console.error("Error fetching PO requests:", error);
     }
@@ -97,6 +163,7 @@ const Purchase: React.FC = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setFormData({
+      requisitionNumber: "",
       requisitionForm: null,
       comparativeForm: null,
       quotation1: null,
@@ -115,7 +182,6 @@ const Purchase: React.FC = () => {
     const files = (e.target as HTMLInputElement).files;
     setFormData((prev) => ({
       ...prev,
-      comments: name === "comments" ? value : prev.comments,
       [name]: files ? files[0] : value,
     }));
   };
@@ -129,6 +195,7 @@ const Purchase: React.FC = () => {
 
     const formDataToSubmit = new FormData();
     formDataToSubmit.append("userId", user_id);
+    formDataToSubmit.append("requisitionNumber", formData.requisitionNumber);
     formDataToSubmit.append(
       "requisitionForm",
       formData.requisitionForm as Blob
@@ -181,6 +248,20 @@ const Purchase: React.FC = () => {
               <FaPlus className="mr-2" /> New PO Request
             </button>
           </div>
+          <div className="w-auto relative inline-flex">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={
+                activeTab === "requests"
+                  ? "Search by Requisition Number"
+                  : "Search by Vendor or PO Number"
+              }
+              className="w-80 bg-white border border-black text-black pl-9 pr-2 py-1 rounded-xl"
+            />
+          </div>
         </div>
       </div>
 
@@ -196,7 +277,7 @@ const Purchase: React.FC = () => {
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
-              My PO Requests ({poRequests.length})
+              My PO Requests ({filteredPORequests.length})
             </button>
             <button
               onClick={() => setActiveTab("orders")}
@@ -206,7 +287,7 @@ const Purchase: React.FC = () => {
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
-              My Purchase Orders ({purchaseOrders.length})
+              My Purchase Orders ({filteredPurchaseOrders.length})
             </button>
           </nav>
         </div>
@@ -222,6 +303,9 @@ const Purchase: React.FC = () => {
                   Date
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Requisition Number
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Status
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
@@ -233,11 +317,17 @@ const Purchase: React.FC = () => {
               </tr>
             </thead>
             <tbody className="w-full">
-              {poRequests.map((request) => (
+              {filteredPORequests.map((request) => (
                 <tr key={request.poRequestId} className="text-[#252525]">
                   <td className="py-2 px-4 text-start border-b">
                     {request.date && request.date.trim() !== ""
                       ? request.date
+                      : "-"}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {request.requisitionNumber &&
+                    request.requisitionNumber.trim() !== ""
+                      ? request.requisitionNumber
                       : "-"}
                   </td>
                   <td className="py-2 px-4 text-start border-b">
@@ -281,6 +371,9 @@ const Purchase: React.FC = () => {
                   Date
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Vendor
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Remaining Amount
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
@@ -292,12 +385,13 @@ const Purchase: React.FC = () => {
               </tr>
             </thead>
             <tbody className="w-full">
-              {purchaseOrders.map((po) => (
+              {filteredPurchaseOrders.map((po) => (
                 <tr key={po.poId} className="text-[#252525]">
                   <td className="py-2 px-4 text-start border-b">
                     {po.poNumber}
                   </td>
                   <td className="py-2 px-4 text-start border-b">{po.date}</td>
+                  <td className="py-2 px-4 text-start border-b">{po.vendor}</td>
                   <td className="py-2 px-4 text-start border-b">
                     {po.remainingAmount}
                   </td>
@@ -323,6 +417,24 @@ const Purchase: React.FC = () => {
         <h2 className="text-2xl font-bold mb-4">Add New Purchase Order</h2>
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-2 gap-6">
+            <div className="form-group">
+              <label
+                htmlFor="requisitionNumber"
+                className="block font-bold mb-1"
+              >
+                Requisition Number
+              </label>
+              <input
+                type="text"
+                id="requisitionNumber"
+                name="requisitionNumber"
+                value={formData.requisitionNumber}
+                onChange={handleFileChange}
+                className="w-full px-4 py-2 border rounded bg-transparent"
+                placeholder="Enter requisition number"
+                required
+              />
+            </div>
             <div className="form-group">
               <label htmlFor="requisitionForm" className="block font-bold mb-1">
                 Requisition Form

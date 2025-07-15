@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { FaCheck, FaTimes } from "react-icons/fa";
+import { FaCheck, FaTimes, FaEdit } from "react-icons/fa";
+import { Search } from "lucide-react";
 import Modal from "react-modal";
 import axios from "axios";
 import { Download } from "lucide-react";
@@ -19,6 +20,7 @@ interface PurchaseOrder {
   vendor: string;
   userId: string;
   date: string;
+  paymentType: string;
 }
 
 const customStyles = {
@@ -48,6 +50,11 @@ const customStyles = {
 
 const PurchaseOrder: React.FC = () => {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [filteredPurchaseOrders, setFilteredPurchaseOrders] = useState<
+    PurchaseOrder[]
+  >([]);
+  const [filteredFilesData, setFilteredFilesData] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [, setIsModalOpen] = useState(false);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] =
     useState<boolean>(false);
@@ -82,6 +89,48 @@ const PurchaseOrder: React.FC = () => {
   const [selectedPoId, setSelectedPoId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [activeTab, setActiveTab] = useState<"requests" | "orders">("requests");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [, setSelectedPOForEdit] = useState<PurchaseOrder | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    poId: "",
+    poNumber: "",
+    vendor: "",
+    paymentType: "",
+    quotationAmount: "",
+    baseAmount: "",
+    remainingAmount: "",
+    finalAmount: "",
+    sgst: "",
+    sgstAmount: "",
+    cgst: "",
+    cgstAmount: "",
+    igst: "",
+    igstAmount: "",
+    narration: "",
+    date: "",
+  });
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+
+  // Search functionality
+  useEffect(() => {
+    const filteredRequests = filesData.filter((request) => {
+      if (request.requisitionNumber || request.requisitionNumber === "") {
+        return request.requisitionNumber
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase());
+      }
+      return true;
+    });
+    setFilteredFilesData(filteredRequests);
+
+    const filteredOrders = purchaseOrders.filter(
+      (order) =>
+        order.vendor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.poNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ""
+    );
+    setFilteredPurchaseOrders(filteredOrders);
+  }, [searchTerm, filesData, purchaseOrders]);
 
   useEffect(() => {
     const fetchDropdownData = async () => {
@@ -126,6 +175,7 @@ const PurchaseOrder: React.FC = () => {
       comments: item.comments,
       userId: item.userId,
       date: item.date,
+      requisitionNumber: item.requisitionNumber,
     }));
 
     if (isRestrictedAdmin()) {
@@ -137,7 +187,28 @@ const PurchaseOrder: React.FC = () => {
         );
       }
     }
-    setFilesData(mappedData);
+
+    // Sort by date in descending order (newest first), put null/empty dates last
+    const sortedData = mappedData.sort((a: any, b: any) => {
+      // Handle null, empty, or invalid dates
+      const dateA = a.date && a.date.trim() !== "" ? new Date(a.date) : null;
+      const dateB = b.date && b.date.trim() !== "" ? new Date(b.date) : null;
+
+      // If both dates are null/empty, maintain original order
+      if (!dateA && !dateB) return 0;
+
+      // If only dateA is null/empty, put it after dateB
+      if (!dateA) return 1;
+
+      // If only dateB is null/empty, put it after dateA
+      if (!dateB) return -1;
+
+      // If both dates are valid, sort in descending order (newest first)
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    setFilesData(sortedData);
+    setFilteredFilesData(sortedData);
   };
   const fetchPurchaseOrders = async () => {
     try {
@@ -155,6 +226,7 @@ const PurchaseOrder: React.FC = () => {
         vendor: po.vendor,
         userId: po.userId,
         date: po.date,
+        paymentType: po.paymentType,
       }));
       if (isRestrictedAdmin()) {
         const adminEmail = getRestrictedAdminEmail();
@@ -163,7 +235,28 @@ const PurchaseOrder: React.FC = () => {
           data = data.filter((po) => allowedUserIds.includes(po.userId));
         }
       }
-      setPurchaseOrders(data);
+
+      // Sort by date in descending order (newest first), put null/empty dates last
+      const sortedData = data.sort((a: PurchaseOrder, b: PurchaseOrder) => {
+        // Handle null, empty, or invalid dates
+        const dateA = a.date && a.date.trim() !== "" ? new Date(a.date) : null;
+        const dateB = b.date && b.date.trim() !== "" ? new Date(b.date) : null;
+
+        // If both dates are null/empty, maintain original order
+        if (!dateA && !dateB) return 0;
+
+        // If only dateA is null/empty, put it after dateB
+        if (!dateA) return 1;
+
+        // If only dateB is null/empty, put it after dateA
+        if (!dateB) return -1;
+
+        // If both dates are valid, sort in descending order (newest first)
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      setPurchaseOrders(sortedData);
+      setFilteredPurchaseOrders(sortedData);
     } catch (error) {
       console.error("Error fetching purchase orders:", error);
     }
@@ -181,7 +274,9 @@ const PurchaseOrder: React.FC = () => {
     setIsModalOpen(false);
     setIsAcceptModalOpen(false);
     setIsRejectModalOpen(false);
+    setIsEditModalOpen(false);
     setRejectReason("");
+    setSelectedPOForEdit(null);
   };
 
   const handleChange = (
@@ -471,33 +566,247 @@ const PurchaseOrder: React.FC = () => {
     setIsPurchaseModalOpen(true);
   };
 
+  const handleEditClick = (po: PurchaseOrder) => {
+    setSelectedPOForEdit(po);
+    setEditFormData({
+      poId: po.poId,
+      poNumber: po.poNumber,
+      vendor: po.vendor,
+      paymentType: po.paymentType,
+      quotationAmount: po.finalAmount.toString(), // Using finalAmount as quotationAmount
+      baseAmount: po.finalAmount.toString(), // Using finalAmount as baseAmount
+      remainingAmount: po.remainingAmount.toString(),
+      finalAmount: po.finalAmount.toString(),
+      sgst: "0", // Default values as they're not in the interface
+      sgstAmount: "0",
+      cgst: "0",
+      cgstAmount: "0",
+      igst: "0",
+      igstAmount: "0",
+      narration: "",
+      date: po.date,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
+
+    if (name === "igst") {
+      const igstPercentage = parseTax(value) / 100;
+      const baseAmount = parseFloat(editFormData.baseAmount);
+      const igstAmount = (baseAmount * igstPercentage).toFixed(4);
+
+      setEditFormData((prev) => ({
+        ...prev,
+        igst: value,
+        sgst: "0",
+        cgst: "0",
+        sgstAmount: "0",
+        cgstAmount: "0",
+        igstAmount: igstAmount,
+        finalAmount: (baseAmount + parseFloat(igstAmount)).toFixed(4),
+      }));
+    } else if (name === "sgst") {
+      const sgstPercentage = parseTax(value) / 100;
+      const baseAmount = parseFloat(editFormData.baseAmount);
+      const sgstAmount = (baseAmount * sgstPercentage).toFixed(4);
+      const cgstAmount = parseFloat(editFormData.cgstAmount);
+
+      setEditFormData((prev) => ({
+        ...prev,
+        sgst: value,
+        sgstAmount: sgstAmount,
+        igst: "0",
+        igstAmount: "0",
+        finalAmount: (baseAmount + parseFloat(sgstAmount) + cgstAmount).toFixed(
+          4
+        ),
+      }));
+    } else if (name === "cgst") {
+      const cgstPercentage = parseTax(value) / 100;
+      const baseAmount = parseFloat(editFormData.baseAmount);
+      const cgstAmount = (baseAmount * cgstPercentage).toFixed(4);
+      const sgstAmount = parseFloat(editFormData.sgstAmount);
+
+      setEditFormData((prev) => ({
+        ...prev,
+        cgst: value,
+        igst: "0",
+        igstAmount: "0",
+        cgstAmount: cgstAmount,
+        finalAmount: (baseAmount + parseFloat(cgstAmount) + sgstAmount).toFixed(
+          4
+        ),
+      }));
+    } else if (name === "baseAmount") {
+      const baseAmount = parseFloat(value);
+      const igstPercentage = parseTax(editFormData.igst) / 100;
+      const igstAmount = (baseAmount * igstPercentage).toFixed(4);
+      const sgstPercentage = parseTax(editFormData.sgst) / 100;
+      const sgstAmount = (baseAmount * sgstPercentage).toFixed(4);
+      const cgstPercentage = parseTax(editFormData.cgst) / 100;
+      const cgstAmount = (baseAmount * cgstPercentage).toFixed(4);
+
+      setEditFormData((prev) => ({
+        ...prev,
+        baseAmount: value,
+        igstAmount: igstAmount,
+        sgstAmount: sgstAmount,
+        cgstAmount: cgstAmount,
+        finalAmount: (
+          baseAmount +
+          parseFloat(igstAmount) +
+          parseFloat(sgstAmount) +
+          parseFloat(cgstAmount)
+        ).toFixed(4),
+      }));
+    } else if (name === "igstAmount") {
+      const igstAmount = parseFloat(value);
+
+      setEditFormData((prev) => ({
+        ...prev,
+        igstAmount: value,
+        sgstAmount: "0",
+        cgstAmount: "0",
+        finalAmount: (parseFloat(editFormData.baseAmount) + igstAmount).toFixed(
+          4
+        ),
+      }));
+    } else if (name === "sgstAmount") {
+      const sgstAmount = parseFloat(value);
+      const cgstAmount = parseFloat(editFormData.cgstAmount);
+
+      setEditFormData((prev) => ({
+        ...prev,
+        sgstAmount: value,
+        igstAmount: "0",
+        finalAmount: (
+          parseFloat(editFormData.baseAmount) +
+          sgstAmount +
+          cgstAmount
+        ).toFixed(4),
+      }));
+    } else if (name === "cgstAmount") {
+      const cgstAmount = parseFloat(value);
+      const sgstAmount = parseFloat(editFormData.sgstAmount);
+
+      setEditFormData((prev) => ({
+        ...prev,
+        cgstAmount: value,
+        igstAmount: "0",
+        finalAmount: (
+          parseFloat(editFormData.baseAmount) +
+          cgstAmount +
+          sgstAmount
+        ).toFixed(4),
+      }));
+    } else {
+      setEditFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isEditSubmitting) return;
+    setIsEditSubmitting(true);
+
+    const updateRequest = {
+      poId: editFormData.poId,
+      poNumber: editFormData.poNumber,
+      vendor: editFormData.vendor,
+      paymentType: editFormData.paymentType,
+      quotationAmount: parseFloat(editFormData.quotationAmount),
+      baseAmount: parseFloat(editFormData.baseAmount),
+      remainingAmount: parseFloat(editFormData.remainingAmount),
+      finalAmount: parseFloat(editFormData.finalAmount),
+      sgst: editFormData.sgst,
+      sgstAmount: parseFloat(editFormData.sgstAmount),
+      cgst: editFormData.cgst,
+      cgstAmount: parseFloat(editFormData.cgstAmount),
+      igst: editFormData.igst,
+      igstAmount: parseFloat(editFormData.igstAmount),
+      narration: editFormData.narration,
+      date: editFormData.date,
+    };
+
+    try {
+      console.log("Sending PO update request:", updateRequest);
+      const response = await axios.post(
+        `${baseUrl}/purchase-orders/update`,
+        updateRequest,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        setIsEditModalOpen(false);
+        setSelectedPOForEdit(null);
+        await fetchPurchaseOrders();
+      } else {
+        throw new Error(`Unexpected response status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Error updating PO:", error);
+      alert("Error updating PO. Please check the console for details.");
+    } finally {
+      setIsEditSubmitting(false);
+    }
+  };
+
   return (
     <>
       {/* Tab Navigation */}
-      <div className="mb-6 px-3">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab("requests")}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+      <div className="mb-6 mt-6">
+        <div className="flex flex-wrap justify-between items-center space-y-2 md:space-y-0 md:space-x-2">
+          <div className="border-b border-gray-200 flex-1">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab("requests")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "requests"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                PO Requests ({filteredFilesData.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("orders")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "orders"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Purchase Orders ({filteredPurchaseOrders.length})
+              </button>
+            </nav>
+          </div>
+          <div className="w-auto relative inline-flex">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={
                 activeTab === "requests"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              PO Requests ({filesData.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("orders")}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "orders"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Purchase Orders ({purchaseOrders.length})
-            </button>
-          </nav>
+                  ? "Search by Requisition Number"
+                  : "Search by Vendor or PO Number"
+              }
+              className="w-80 bg-white border border-black text-black pl-9 pr-2 py-1 rounded-xl"
+            />
+          </div>
         </div>
       </div>
 
@@ -513,6 +822,9 @@ const PurchaseOrder: React.FC = () => {
                 <tr>
                   <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                     Date
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Requisition Number
                   </th>
                   <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                     Requisition Form
@@ -538,10 +850,16 @@ const PurchaseOrder: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="w-full">
-                {filesData.map((file) => (
+                {filteredFilesData.map((file) => (
                   <tr key={file.poRequestId} className="text-[#252525]">
                     <td className="py-2 px-4 text-start border-b">
                       {file.date && file.date.trim() !== "" ? file.date : "-"}
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      {file.requisitionNumber &&
+                      file.requisitionNumber.trim() !== ""
+                        ? file.requisitionNumber
+                        : "-"}
                     </td>
                     <td className="py-2 px-4 text-start border-b">
                       <button
@@ -662,10 +980,13 @@ const PurchaseOrder: React.FC = () => {
                   <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                     Documents
                   </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="w-full">
-                {purchaseOrders.map((po) => (
+                {filteredPurchaseOrders.map((po) => (
                   <tr key={po.poId} className="text-[#252525]">
                     <td className="py-2 px-4 text-start border-b">
                       {po.date && po.date.trim() !== "" ? po.date : "-"}
@@ -690,6 +1011,15 @@ const PurchaseOrder: React.FC = () => {
                         }
                       >
                         Download
+                      </button>
+                    </td>
+                    <td className="py-2 px-4 border-b">
+                      <button
+                        onClick={() => handleEditClick(po)}
+                        className="bg-red-400 text-white px-3 py-1 rounded flex items-center"
+                      >
+                        Edit
+                        <FaEdit className="ml-1" />
                       </button>
                     </td>
                   </tr>
@@ -1060,6 +1390,300 @@ const PurchaseOrder: React.FC = () => {
             Download Purchase Order
           </button>
         </div>
+      </Modal>
+
+      {/* Edit PO Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onRequestClose={() => setIsEditModalOpen(false)}
+        style={customStyles}
+        contentLabel="Edit PO Modal"
+      >
+        <h2 className="text-2xl font-bold mb-6">Edit Purchase Order</h2>
+        <form
+          onSubmit={handleEditSave}
+          className="max-h-[80vh] overflow-y-auto"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                PO Number
+              </label>
+              <input
+                type="text"
+                name="poNumber"
+                value={editFormData.poNumber}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Vendor
+              </label>
+              <select
+                name="vendor"
+                value={editFormData.vendor}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              >
+                <option value="">Select Vendor</option>
+                {vendors.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Payment Type
+              </label>
+              <select
+                name="paymentType"
+                value={editFormData.paymentType}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              >
+                <option value="">Select Payment Type</option>
+                {["HALF", "FULL", "PARTIAL"].map((type, index) => (
+                  <option key={index} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date
+              </label>
+              <input
+                type="date"
+                name="date"
+                value={editFormData.date}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Quotation Amount
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="quotationAmount"
+                value={editFormData.quotationAmount}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Base Amount
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="baseAmount"
+                value={editFormData.baseAmount}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Remaining Amount
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="remainingAmount"
+                value={editFormData.remainingAmount}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                IGST
+              </label>
+              <select
+                name="igst"
+                value={editFormData.igst}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              >
+                <option value="">Select IGST</option>
+                {igsts.map((igst) => (
+                  <option key={igst} value={igst}>
+                    {igst}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                IGST Amount
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="igstAmount"
+                value={editFormData.igstAmount}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                SGST
+              </label>
+              <select
+                name="sgst"
+                value={editFormData.sgst}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              >
+                <option value="">Select SGST</option>
+                {sgsts.map((sgst) => (
+                  <option key={sgst} value={sgst}>
+                    {sgst}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                SGST Amount
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="sgstAmount"
+                value={editFormData.sgstAmount}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                CGST
+              </label>
+              <select
+                name="cgst"
+                value={editFormData.cgst}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              >
+                <option value="">Select CGST</option>
+                {cgsts.map((cgst) => (
+                  <option key={cgst} value={cgst}>
+                    {cgst}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                CGST Amount
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="cgstAmount"
+                value={editFormData.cgstAmount}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Final Amount
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="finalAmount"
+                value={editFormData.finalAmount}
+                onChange={handleEditChange}
+                required
+                className="w-full border border-gray-300 rounded p-2 bg-white text-lg font-semibold"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Narration
+              </label>
+              <textarea
+                name="narration"
+                value={editFormData.narration}
+                onChange={handleEditChange}
+                className="w-full border border-gray-300 rounded p-2 bg-white resize-none"
+                rows={3}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end pt-4 border-t mt-6">
+            <button
+              type="button"
+              className="px-4 py-2 bg-gray-500 text-white rounded-md mr-2"
+              onClick={closeModal}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className={`px-4 py-2 bg-blue-500 text-white rounded-md ${
+                isEditSubmitting
+                  ? "cursor-not-allowed opacity-50"
+                  : "cursor-pointer"
+              }`}
+              disabled={isEditSubmitting}
+            >
+              {isEditSubmitting ? (
+                <div className="flex items-center">
+                  <svg
+                    className="animate-spin h-5 w-5 text-white mr-2"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Saving...
+                </div>
+              ) : (
+                "Save Purchase Order"
+              )}
+            </button>
+          </div>
+        </form>
       </Modal>
     </>
   );
