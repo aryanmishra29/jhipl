@@ -10,7 +10,7 @@ export const isBlockedDate = (): boolean => {
     return false;
   }
 
-  // Check if today is the 2nd, 11th, or 21st of the month
+  // Check if today is the 2nd, 12th, or 22nd of the month
   return day === 2 || day === 3 || day === 4 || day === 5 || day === 12 || day === 13 || day === 14 || day === 15 || day === 22 || day === 23 || day === 24 || day === 25;
 };
 
@@ -20,5 +20,5 @@ export const isBlockedDate = (): boolean => {
  * @returns string - Formatted message for the toast notification
  */
 export const getBlockedDateMessage = (actionType: string): string => {
-  return `Creation of new ${actionType} is blocked on the 2nd - 5th, 11th - 15th, and 21st - 25th of each month!`;
+  return `Creation of new ${actionType} is blocked on the 2nd - 5th, 12th - 15th, and 22nd - 25th of each month!`;
 };
