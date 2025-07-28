@@ -7,6 +7,7 @@ import {
   FaCheck,
   FaTimes,
   FaClock,
+  FaPlus,
 } from "react-icons/fa";
 import Modal from "react-modal";
 import axios from "axios";
@@ -26,6 +27,8 @@ interface Reimbursement {
   glCode: string;
   costCenter: string;
   date: string;
+  generatedDate: string;
+  dateOfPayment: string;
   amount: number;
   advance: number;
   utrNo: string;
@@ -98,6 +101,10 @@ const AdminReimbursementTable: React.FC = () => {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [costCenterRows, setCostCenterRows] = useState([
+    { costCenter: "", amount: "" },
+  ]);
 
   const baseUrl = "https://jhipl.grobird.in";
 
@@ -217,28 +224,152 @@ const AdminReimbursementTable: React.FC = () => {
     }
   };
 
-  const openModal = (reimbursement: Reimbursement) => {
+  // Function to add a new cost center row
+  const addCostCenterRow = () => {
+    setCostCenterRows([...costCenterRows, { costCenter: "", amount: "" }]);
+  };
+
+  // Function to remove a cost center row
+  const removeCostCenterRow = (index: number) => {
+    if (costCenterRows.length > 1) {
+      const newRows = costCenterRows.filter((_, i) => i !== index);
+      setCostCenterRows(newRows);
+      updateAmountFromCostCenters(newRows);
+    }
+  };
+
+  // Function to update cost center row
+  const updateCostCenterRow = (index: number, field: string, value: string) => {
+    const newRows = [...costCenterRows];
+    newRows[index] = { ...newRows[index], [field]: value };
+    setCostCenterRows(newRows);
+    if (field === "amount") {
+      updateAmountFromCostCenters(newRows);
+    }
+  };
+
+  // Function to calculate total amount from cost center amounts
+  const updateAmountFromCostCenters = (rows: typeof costCenterRows) => {
+    const totalAmount = rows.reduce((sum, row) => {
+      const amount = parseFloat(row.amount) || 0;
+      return sum + amount;
+    }, 0);
+
+    setSelectedReimbursement((prev) =>
+      prev
+        ? {
+            ...prev,
+            amount: totalAmount,
+          }
+        : undefined
+    );
+  };
+
+  const openModal = async (reimbursement: Reimbursement) => {
     setSelectedReimbursement(reimbursement);
+
+    // Get detailed reimbursement data to fetch baseAmountSplitForCostCenters
+    try {
+      const response = await fetch(
+        `${baseUrl}/reimbursements/${reimbursement.reimbursementId}`
+      );
+      if (response.ok) {
+        const detailedReimbursement = await response.json();
+
+        // Parse cost centers and amounts
+        const costCenterArray = reimbursement.costCenter
+          .split(";")
+          .filter((cc) => cc.trim() !== "");
+        const amountArray =
+          detailedReimbursement.baseAmountSplitForCostCenters || [];
+
+        // If baseAmountSplitForCostCenters is null/empty, use total amount for single cost center
+        if (!amountArray || amountArray.length === 0) {
+          setCostCenterRows([
+            {
+              costCenter: costCenterArray[0] || reimbursement.costCenter,
+              amount: reimbursement.amount.toString(),
+            },
+          ]);
+        } else {
+          // Create cost center rows with split amounts
+          const rows = costCenterArray.map((costCenter, index) => ({
+            costCenter: costCenter.trim(),
+            amount: amountArray[index] ? amountArray[index].toString() : "",
+          }));
+
+          // Ensure at least one row
+          setCostCenterRows(
+            rows.length > 0 ? rows : [{ costCenter: "", amount: "" }]
+          );
+        }
+      } else {
+        // Fallback to single cost center if detailed data fetch fails
+        setCostCenterRows([
+          {
+            costCenter: reimbursement.costCenter.split(";")[0] || "",
+            amount: reimbursement.amount.toString(),
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error fetching detailed reimbursement data:", error);
+      // Fallback to single cost center
+      setCostCenterRows([
+        {
+          costCenter: reimbursement.costCenter.split(";")[0] || "",
+          amount: reimbursement.amount.toString(),
+        },
+      ]);
+    }
+
     setModalIsOpen(true);
   };
 
   const closeModal = () => {
     setModalIsOpen(false);
     setSelectedReimbursement(undefined);
+    // Reset cost center rows
+    setCostCenterRows([{ costCenter: "", amount: "" }]);
   };
 
   const handleUpdateReimbursement = async () => {
     if (isSubmitting) return;
+
+    // Validate cost center rows
+    const hasValidCostCenters = costCenterRows.every(
+      (row) => row.costCenter && row.amount
+    );
+    if (!hasValidCostCenters) {
+      alert("Please fill in all cost centers and amounts.");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       if (selectedReimbursement) {
-        // const { reimbursementId } = selectedReimbursement;
+        // Prepare cost center data
+        const costCenterString = costCenterRows
+          .map((row) => row.costCenter)
+          .join(";");
+        const baseAmountSplitForCostCenters = costCenterRows.map((row) =>
+          parseFloat(row.amount)
+        );
+
+        // Prepare update request, excluding generatedDate as it should not be modified
+        const { generatedDate, ...reimbursementData } = selectedReimbursement;
+        const updateRequest = {
+          ...reimbursementData,
+          costCenter: costCenterString,
+          baseAmountSplitForCostCenters: baseAmountSplitForCostCenters,
+        };
+
         const response = await fetch(`${baseUrl}/reimbursements/update`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(selectedReimbursement),
+          body: JSON.stringify(updateRequest),
         });
 
         if (!response.ok) {
@@ -257,7 +388,9 @@ const AdminReimbursementTable: React.FC = () => {
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -523,7 +656,10 @@ const AdminReimbursementTable: React.FC = () => {
             <thead className="min-w-full">
               <tr>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Date
+                  Entry Date
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Document Date
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Name
@@ -558,6 +694,12 @@ const AdminReimbursementTable: React.FC = () => {
                 return (
                   <tr key={index} className="text-[#252525]">
                     <td className="py-2 px-4 text-start border-b">
+                      {reimbursement.generatedDate &&
+                      reimbursement.generatedDate.trim() !== ""
+                        ? reimbursement.generatedDate
+                        : "-"}
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
                       {reimbursement.date}
                     </td>
                     <td className="py-2 px-4 text-start border-b">
@@ -572,7 +714,7 @@ const AdminReimbursementTable: React.FC = () => {
                       {reimbursement.glCode}
                     </td>
                     <td className="py-2 px-4 text-start border-b">
-                      {reimbursement.costCenter}
+                      {reimbursement.costCenter.replace(/;/g, ", ")}
                     </td>
                     <td className="py-2 px-4 text-start border-b">
                       {reimbursement.comments &&
@@ -631,140 +773,323 @@ const AdminReimbursementTable: React.FC = () => {
             </p>
           </div>
         )}
-        <div className="grid grid-cols-2 gap-6">
-          <select
-            name="companyName"
-            value={selectedReimbursement?.name || ""}
-            onChange={handleInputChange}
-            className={`border bg-transparent rounded p-2 w-full ${
-              isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
-            }`}
-            required
-            disabled={isRestrictedAdmin()}
-          >
-            <option value="">Select Vendor</option>
-            {(vendors.length > 0
-              ? vendors
-              : ["Vendor A", "Vendor B", "Vendor C"]
-            ).map((vendor, index) => (
-              <option key={index} value={vendor}>
-                {vendor}
-              </option>
-            ))}
-          </select>
-          <select
-            name="glCode"
-            value={selectedReimbursement?.glCode || ""}
-            onChange={handleInputChange}
-            className={`border bg-transparent rounded p-2 w-full ${
-              isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
-            }`}
-            disabled={isRestrictedAdmin()}
-          >
-            <option value="">Select GL Code</option>
-            {glCodes.map((code, index) => (
-              <option key={index} value={code}>
-                {code}
-              </option>
-            ))}
-          </select>
-          <select
-            name="costCenter"
-            value={selectedReimbursement?.costCenter || ""}
-            onChange={handleInputChange}
-            className={`border bg-transparent rounded p-2 w-full ${
-              isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
-            }`}
-            disabled={isRestrictedAdmin()}
-          >
-            <option value="">Select Cost Center</option>
-            {costCenters.map((center, index) => (
-              <option key={index} value={center}>
-                {center}
-              </option>
-            ))}
-          </select>
-          <input
-            type="date"
-            name="date"
-            value={selectedReimbursement?.date || ""}
-            onChange={handleInputChange}
-            className={`border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer ${
-              isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
-            }`}
-            disabled={isRestrictedAdmin()}
-          />
-          <input
-            type="number"
-            name="amount"
-            value={selectedReimbursement?.amount || ""}
-            onChange={handleInputChange}
-            placeholder="Amount"
-            className={`border bg-transparent rounded p-2 w-full ${
-              isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
-            }`}
-            disabled={isRestrictedAdmin()}
-          />
-          <input
-            type="number"
-            name="advance"
-            value={selectedReimbursement?.advance || ""}
-            onChange={handleInputChange}
-            placeholder="Advance"
-            className={`border bg-transparent rounded p-2 w-full ${
-              isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
-            }`}
-            disabled={isRestrictedAdmin()}
-          />
-          <input
-            type="text"
-            name="utrNo"
-            value={selectedReimbursement?.utrNo || ""}
-            onChange={handleInputChange}
-            placeholder="UTR No."
-            className={`border bg-transparent rounded p-2 w-full ${
-              isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
-            }`}
-            disabled={isRestrictedAdmin()}
-          />
-          <select
-            name="status"
-            value={selectedReimbursement?.status || ""}
-            onChange={handleInputChange}
-            className="border bg-transparent rounded p-2 w-full"
-          >
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
-          <input
-            type="text"
-            name="description"
-            value={selectedReimbursement?.description || ""}
-            onChange={handleInputChange}
-            placeholder="Description"
-            className="border bg-transparent rounded p-2 w-full"
-          />
-          <input
-            type="text"
-            name="narration"
-            value={selectedReimbursement?.narration || ""}
-            onChange={handleInputChange}
-            placeholder="Narration"
-            className={`border bg-transparent rounded p-2 w-full ${
-              isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
-            }`}
-            disabled={isRestrictedAdmin()}
-          />
-          <input
-            type="text"
-            name="comments"
-            value={selectedReimbursement?.comments || ""}
-            onChange={handleInputChange}
-            placeholder="Comments"
-            className="border bg-transparent rounded p-2 w-full col-span-2"
-          />
-        </div>
+        <form className="max-h-[80vh] overflow-y-auto">
+          {/* Employee Information */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Employee Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Employee Name
+                </label>
+                <select
+                  name="name"
+                  value={selectedReimbursement?.name || ""}
+                  onChange={handleInputChange}
+                  className={`w-full border bg-transparent rounded p-2 ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
+                  required
+                  disabled={isRestrictedAdmin()}
+                >
+                  <option value="">Select Employee</option>
+                  {vendors.map((vendor, index) => (
+                    <option key={index} value={vendor}>
+                      {vendor}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  GL Code
+                </label>
+                <select
+                  name="glCode"
+                  value={selectedReimbursement?.glCode || ""}
+                  onChange={handleInputChange}
+                  className={`w-full border bg-transparent rounded p-2 ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isRestrictedAdmin()}
+                >
+                  <option value="">Select GL Code</option>
+                  {glCodes.map((code, index) => (
+                    <option key={index} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Date Information */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Date Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Document Date
+                </label>
+                <input
+                  type="date"
+                  name="date"
+                  value={selectedReimbursement?.date || ""}
+                  onChange={handleInputChange}
+                  className={`w-full border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isRestrictedAdmin()}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Entry Date{" "}
+                  <span className="text-xs text-gray-400">(Read-only)</span>
+                </label>
+                <input
+                  type="date"
+                  name="generatedDate"
+                  value={selectedReimbursement?.generatedDate || ""}
+                  className="w-full border bg-gray-100 text-black rounded p-2 cursor-not-allowed [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
+                  disabled
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Payment Date
+                </label>
+                <input
+                  type="date"
+                  name="dateOfPayment"
+                  value={selectedReimbursement?.dateOfPayment || ""}
+                  onChange={handleInputChange}
+                  className={`w-full border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isRestrictedAdmin()}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Cost Centers Section */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Cost Center Allocation
+            </h3>
+            <div className="space-y-3">
+              {costCenterRows.map((row, index) => (
+                <div
+                  key={index}
+                  className="flex gap-3 items-end p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Cost Center
+                    </label>
+                    {isRestrictedAdmin() ? (
+                      <input
+                        type="text"
+                        className="w-full border rounded p-2 bg-gray-100 cursor-not-allowed"
+                        value={row.costCenter}
+                        disabled
+                      />
+                    ) : (
+                      <SearchableDropdown
+                        name={`costCenter-${index}`}
+                        options={costCenters.length > 0 ? costCenters : ["N/A"]}
+                        value={row.costCenter}
+                        onChange={(e) =>
+                          updateCostCenterRow(
+                            index,
+                            "costCenter",
+                            e.target.value as string
+                          )
+                        }
+                        placeholder="Select Cost Center"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Amount
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className={`w-full border rounded p-2 bg-white ${
+                        isRestrictedAdmin()
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : ""
+                      }`}
+                      value={row.amount}
+                      onChange={(e) =>
+                        updateCostCenterRow(index, "amount", e.target.value)
+                      }
+                      disabled={isRestrictedAdmin()}
+                      required
+                    />
+                  </div>
+                  {!isRestrictedAdmin() && (
+                    <div className="flex gap-2">
+                      {index === 0 && (
+                        <button
+                          type="button"
+                          onClick={addCostCenterRow}
+                          className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 transition-colors"
+                          title="Add Cost Center"
+                        >
+                          <FaPlus />
+                        </button>
+                      )}
+                      {costCenterRows.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeCostCenterRow(index)}
+                          className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition-colors"
+                          title="Remove Cost Center"
+                        >
+                          <FaTimes />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <div className="w-full">
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Total Amount{" "}
+                    <span className="text-xs text-gray-500">
+                      (Auto-calculated from cost centers, but editable)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="amount"
+                    className={`w-full border rounded p-3 bg-white text-lg font-semibold ${
+                      isRestrictedAdmin()
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : ""
+                    }`}
+                    value={selectedReimbursement?.amount || ""}
+                    onChange={handleInputChange}
+                    placeholder="Auto-calculated or enter manually"
+                    disabled={isRestrictedAdmin()}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Information */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Additional Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Advance
+                </label>
+                <input
+                  type="number"
+                  name="advance"
+                  value={selectedReimbursement?.advance || ""}
+                  onChange={handleInputChange}
+                  placeholder="Advance"
+                  className={`w-full border bg-transparent rounded p-2 ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isRestrictedAdmin()}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  UTR No.
+                </label>
+                <input
+                  type="text"
+                  name="utrNo"
+                  value={selectedReimbursement?.utrNo || ""}
+                  onChange={handleInputChange}
+                  placeholder="UTR No."
+                  className={`w-full border bg-transparent rounded p-2 ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isRestrictedAdmin()}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={selectedReimbursement?.status || ""}
+                  onChange={handleInputChange}
+                  className="w-full border bg-transparent rounded p-2"
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  name="description"
+                  value={selectedReimbursement?.description || ""}
+                  onChange={handleInputChange}
+                  placeholder="Description"
+                  className="w-full border bg-transparent rounded p-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Narration
+                </label>
+                <input
+                  type="text"
+                  name="narration"
+                  value={selectedReimbursement?.narration || ""}
+                  onChange={handleInputChange}
+                  placeholder="Narration"
+                  className={`w-full border bg-transparent rounded p-2 ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isRestrictedAdmin()}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Comments
+                </label>
+                <textarea
+                  name="comments"
+                  value={selectedReimbursement?.comments || ""}
+                  onChange={handleInputChange}
+                  placeholder="Comments"
+                  className="w-full border bg-transparent rounded p-2 h-24 resize-none"
+                  rows={3}
+                />
+              </div>
+            </div>
+          </div>
+        </form>
         <div className="py-2 flex space-x-2 mt-4">
           <button
             onClick={() =>

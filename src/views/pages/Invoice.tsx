@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { FaPlus, FaCheck, FaTimes, FaClock, FaFilter } from "react-icons/fa";
+import {
+  FaPlus,
+  FaCheck,
+  FaTimes,
+  FaClock,
+  FaFilter,
+  FaEye,
+  FaDownload,
+} from "react-icons/fa";
 import { Search } from "lucide-react";
 import Modal from "react-modal";
 import axios from "axios";
@@ -14,12 +22,32 @@ interface Invoice {
   number: string;
   vendor: string;
   date: string;
+  generatedDate: string;
+  dateOfPayment: string;
   costCenter: string;
   glCode: string;
   gst: string;
+  baseAmount: number;
   finalAmount: number;
+  paymentType: string;
+  poId: string;
+  sgst: string;
+  sgstAmount: number;
+  cgst: string;
+  cgstAmount: number;
+  igst: string;
+  igstAmount: number;
+  sgst2: string;
+  sgstAmount2: number;
+  cgst2: string;
+  cgstAmount2: number;
+  igst2: string;
+  igstAmount2: number;
+  withholdingTax: string;
   status: string;
   utrNo: string;
+  description: string;
+  narration: string;
   comments: string;
 }
 
@@ -54,6 +82,31 @@ const customStyles = {
     width: "1000px",
     maxWidth: "90%",
     maxHeight: "90vh",
+    overflow: "auto",
+    zIndex: 1000,
+  },
+  overlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 999,
+  },
+};
+
+const detailsModalStyles = {
+  content: {
+    top: "50%",
+    left: "50%",
+    right: "auto",
+    bottom: "auto",
+    marginRight: "-50%",
+    transform: "translate(-50%, -50%)",
+    backgroundColor: "#ffffff",
+    color: "#000000",
+    borderRadius: "8px",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+    padding: "40px",
+    width: "1200px",
+    maxWidth: "95%",
+    maxHeight: "95vh",
     overflow: "auto",
     zIndex: 1000,
   },
@@ -109,6 +162,19 @@ const InvoiceTable: React.FC = () => {
   const [isCheckingInvoiceNumber, setIsCheckingInvoiceNumber] = useState(false);
   const [invoiceNumberError, setInvoiceNumberError] = useState("");
   const [invoiceNumberValid, setInvoiceNumberValid] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | undefined>(
+    undefined
+  );
+  const [costCenterDetails, setCostCenterDetails] = useState<
+    { costCenter: string; amount: number }[]
+  >([]);
+  const [idToPo, setIdToPo] = useState<Map<string, string>>(new Map());
+
+  const getWithholdingTaxAmount = (tax: string, baseAmount: number) => {
+    const taxPercentage = parseTax(tax) / 100;
+    return (baseAmount * taxPercentage).toFixed(2);
+  };
 
   // Function to add a new cost center row
   const addCostCenterRow = () => {
@@ -297,6 +363,7 @@ const InvoiceTable: React.FC = () => {
 
         // Update PO details in the state
         const poDetailsMap = new Map<string, PoDetails>();
+        const idToPoMap = new Map<string, string>();
         poResponse.data.forEach((po: any) => {
           poDetailsMap.set(po.poNumber, {
             vendor: po.vendor,
@@ -311,8 +378,10 @@ const InvoiceTable: React.FC = () => {
             baseAmount: po.baseAmount,
             finalAmount: po.finalAmount,
           });
+          idToPoMap.set(po.poId, po.poNumber);
         });
         setPoDetails(poDetailsMap);
+        setIdToPo(idToPoMap);
       } catch (error) {
         console.error("Error fetching dropdown data:", error);
         setCostCenters([]);
@@ -339,6 +408,8 @@ const InvoiceTable: React.FC = () => {
         number: invoice.number,
         vendor: invoice.vendor,
         date: invoice.date,
+        generatedDate: invoice.generatedDate || "",
+        dateOfPayment: invoice.dateOfPayment || "",
         costCenter: invoice.costCenter,
         glCode: invoice.glCode,
         gst:
@@ -348,10 +419,28 @@ const InvoiceTable: React.FC = () => {
           invoice.igstAmount2 +
           invoice.sgstAmount2 +
           invoice.cgstAmount2,
+        baseAmount: invoice.baseAmount,
         finalAmount: invoice.finalAmount,
+        paymentType: invoice.paymentType || "",
+        poId: invoice.poId || "",
+        sgst: invoice.sgst || "",
+        sgstAmount: invoice.sgstAmount || 0,
+        cgst: invoice.cgst || "",
+        cgstAmount: invoice.cgstAmount || 0,
+        igst: invoice.igst || "",
+        igstAmount: invoice.igstAmount || 0,
+        sgst2: invoice.sgst2 || "",
+        sgstAmount2: invoice.sgstAmount2 || 0,
+        cgst2: invoice.cgst2 || "",
+        cgstAmount2: invoice.cgstAmount2 || 0,
+        igst2: invoice.igst2 || "",
+        igstAmount2: invoice.igstAmount2 || 0,
+        withholdingTax: invoice.withholdingTax || "",
         status: invoice.status,
-        utrNo: invoice.utrNo,
-        comments: invoice.comments,
+        utrNo: invoice.utrNo || "",
+        description: invoice.description || "",
+        narration: invoice.narration || "",
+        comments: invoice.comments || "",
       }));
       setInvoices(data);
       setFilteredInvoices(data);
@@ -413,6 +502,92 @@ const InvoiceTable: React.FC = () => {
       description: "",
     });
   };
+
+  const openDetailsModal = async (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+
+    // Get detailed invoice data to fetch baseAmountSplitForCostCenters
+    try {
+      const response = await fetch(`${baseUrl}/invoices/${invoice.invoiceId}`);
+      if (response.ok) {
+        const detailedInvoice = await response.json();
+
+        // Parse cost centers and amounts
+        const costCenterArray = invoice.costCenter
+          .split(";")
+          .filter((cc) => cc.trim() !== "");
+        const amountArray = detailedInvoice.baseAmountSplitForCostCenters || [];
+
+        // If baseAmountSplitForCostCenters is null/empty, use total amount for single cost center
+        if (!amountArray || amountArray.length === 0) {
+          setCostCenterDetails([
+            {
+              costCenter: costCenterArray[0] || invoice.costCenter,
+              amount: invoice.finalAmount,
+            },
+          ]);
+        } else {
+          // Create cost center details with split amounts
+          const details = costCenterArray.map((costCenter, index) => ({
+            costCenter: costCenter.trim(),
+            amount: amountArray[index] || 0,
+          }));
+
+          setCostCenterDetails(details);
+        }
+      } else {
+        // Fallback to single cost center if detailed data fetch fails
+        setCostCenterDetails([
+          {
+            costCenter: invoice.costCenter.split(";")[0] || "",
+            amount: invoice.finalAmount,
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error fetching detailed invoice data:", error);
+      // Fallback to single cost center
+      setCostCenterDetails([
+        {
+          costCenter: invoice.costCenter.split(";")[0] || "",
+          amount: invoice.finalAmount,
+        },
+      ]);
+    }
+
+    setIsDetailsModalOpen(true);
+  };
+
+  const closeDetailsModal = () => {
+    setIsDetailsModalOpen(false);
+    setSelectedInvoice(undefined);
+    setCostCenterDetails([]);
+  };
+
+  const handleDownloadFile = async (
+    invoiceId: string,
+    fileType: "receipts" | "approvals"
+  ) => {
+    try {
+      const response = await fetch(
+        `${baseUrl}/invoices/${invoiceId}/${fileType}`
+      );
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${fileType}-${invoiceId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error(`Error downloading ${fileType}:`, error);
+    }
+  };
+
   const handleFilter = () => {
     let filtered: Invoice[] = invoices;
 
@@ -1024,10 +1199,13 @@ const InvoiceTable: React.FC = () => {
           </div>
         </div>
       </div>
-      <div className="overflow-auto scroll-smooth max-h-[70vh]">
+      <div className="overflow-y-auto scroll-smooth max-h-[70vh]">
         <table className="w-full h-full text-[#8E8F8E] bg-white">
           <thead className="min-w-full">
             <tr>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Entry Date
+              </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Invoice nr.
               </th>
@@ -1035,7 +1213,7 @@ const InvoiceTable: React.FC = () => {
                 Vendor
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                Date
+                Document Date
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 GL Code
@@ -1044,13 +1222,7 @@ const InvoiceTable: React.FC = () => {
                 Cost Center
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                GST
-              </th>
-              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Amount
-              </th>
-              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                UTR No.
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Comments
@@ -1058,11 +1230,19 @@ const InvoiceTable: React.FC = () => {
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Status
               </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="w-full">
             {searchFilteredInvoices.map((invoice) => (
               <tr key={invoice.invoiceId} className="text-[#252525]">
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.generatedDate && invoice.generatedDate.trim() !== ""
+                    ? invoice.generatedDate
+                    : "-"}
+                </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.number}
                 </td>
@@ -1078,12 +1258,8 @@ const InvoiceTable: React.FC = () => {
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.costCenter.replace(/;/g, ", ")}
                 </td>
-                <td className="py-2 px-4 text-start border-b">{invoice.gst}</td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.finalAmount.toFixed(2)}
-                </td>
-                <td className="py-2 px-4 text-start border-b">
-                  {invoice.utrNo}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.comments && invoice.comments.trim() !== ""
@@ -1106,6 +1282,15 @@ const InvoiceTable: React.FC = () => {
                       <FaTimes />
                     )}
                   </div>
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  <button
+                    onClick={() => openDetailsModal(invoice)}
+                    className="bg-blue-500 text-white px-3 py-1 rounded flex items-center hover:bg-blue-600 transition-colors"
+                  >
+                    Details
+                    <FaEye className="ml-1" />
+                  </button>
                 </td>
               </tr>
             ))}
@@ -1748,6 +1933,308 @@ const InvoiceTable: React.FC = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Details Modal */}
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onRequestClose={closeDetailsModal}
+        style={detailsModalStyles}
+        contentLabel="Invoice Details"
+      >
+        <h2 className="text-2xl font-bold mb-6">Invoice Details</h2>
+        {selectedInvoice && (
+          <div className="max-h-[80vh] overflow-y-auto space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+              <div>
+                <label className="text-gray-500">Invoice Number</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.number}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">GL Code</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.glCode}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">Document Date</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.date}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">Entry Date</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.generatedDate &&
+                  selectedInvoice.generatedDate.trim() !== ""
+                    ? selectedInvoice.generatedDate
+                    : "-"}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">Payment Date</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.dateOfPayment &&
+                  selectedInvoice.dateOfPayment.trim() !== ""
+                    ? selectedInvoice.dateOfPayment
+                    : "-"}
+                </div>
+              </div>
+              <div className="col-span-2">
+                <label className="text-gray-500 block mb-2">Cost Centers</label>
+                <div className="space-y-2">
+                  {costCenterDetails.map((detail, index) => (
+                    <div
+                      key={index}
+                      className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border"
+                    >
+                      <div className="font-medium text-gray-800">
+                        {detail.costCenter}
+                      </div>
+                      <div className="font-semibold text-green-600">
+                        ₹{detail.amount.toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                  {costCenterDetails.length > 1 && (
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="font-bold text-gray-800">
+                        Total Base Amount
+                      </div>
+                      <div className="font-bold text-blue-600">
+                        ₹
+                        {costCenterDetails
+                          .reduce((sum, detail) => sum + detail.amount, 0)
+                          .toFixed(2)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-gray-600 mb-1">
+                      Base Amount
+                    </label>
+                    <div className="w-full border rounded p-3 bg-gray-100 text-lg font-semibold text-gray-700">
+                      {selectedInvoice.baseAmount.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">PO Number</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {idToPo.get(selectedInvoice.poId) === undefined
+                    ? "-"
+                    : idToPo.get(selectedInvoice.poId)}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">Payment Type</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.paymentType || "-"}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+              <div>
+                <label className="text-gray-500">Company Name</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.vendor}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-gray-500">IGST</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.igst || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">IGST Amount</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.igstAmount.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">SGST</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.sgst || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">SGST Amount</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.sgstAmount.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">CGST</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.cgst || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">CGST Amount</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.cgstAmount.toFixed(2)}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-gray-500">IGST 2</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.igst2 || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">IGST Amount 2</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.igstAmount2
+                    ? selectedInvoice.igstAmount2.toFixed(2)
+                    : "0.00"}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">SGST 2</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.sgst2 || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">SGST Amount 2</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.sgstAmount2
+                    ? selectedInvoice.sgstAmount2.toFixed(2)
+                    : "0.00"}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">CGST 2</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.cgst2 || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">CGST Amount 2</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.cgstAmount2
+                    ? selectedInvoice.cgstAmount2.toFixed(2)
+                    : "0.00"}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500">Withholding Tax</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.withholdingTax || "-"}
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  Withholding Tax Amount:{" "}
+                  {getWithholdingTaxAmount(
+                    selectedInvoice.withholdingTax || "0",
+                    selectedInvoice.baseAmount
+                  )}
+                </p>
+              </div>
+
+              {/* Total Amount Display */}
+              <div className="mt-4 p-4 bg-green-50 rounded-lg col-span-2">
+                <div className="w-full">
+                  <label className="block text-lg font-medium text-gray-700 mb-2">
+                    Final Total Amount
+                  </label>
+                  <div className="w-full border rounded p-3 bg-gray-100 text-xl font-bold text-gray-700">
+                    {selectedInvoice.finalAmount.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-between gap-6">
+              <div className="flex-1">
+                <label className="text-gray-500">Status</label>
+                <div className="w-full border rounded p-2 bg-gray-100">
+                  <div
+                    className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
+                      selectedInvoice.status === "APPROVED"
+                        ? "bg-green-100 text-green-800"
+                        : selectedInvoice.status === "PENDING"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {selectedInvoice.status === "APPROVED" ? (
+                      <FaCheck className="mr-1" />
+                    ) : selectedInvoice.status === "PENDING" ? (
+                      <FaClock className="mr-1" />
+                    ) : (
+                      <FaTimes className="mr-1" />
+                    )}
+                    {selectedInvoice.status}
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1">
+                <label className="text-gray-500">UTR Number</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedInvoice.utrNo || "-"}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-between gap-6">
+              <div className="flex-1">
+                <label className="text-gray-500">Description</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700 min-h-[60px]">
+                  {selectedInvoice.description || "-"}
+                </div>
+              </div>
+              <div className="flex-1">
+                <label className="text-gray-500">Narration</label>
+                <div className="w-full border rounded p-2 bg-gray-100 text-gray-700 min-h-[60px]">
+                  {selectedInvoice.narration || "-"}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4">
+              <label className="text-gray-500">Comments</label>
+              <div className="w-full border rounded p-2 bg-gray-100 text-gray-700 min-h-[60px]">
+                {selectedInvoice.comments || "-"}
+              </div>
+            </div>
+            <div className="mt-6 flex gap-2">
+              <button
+                onClick={() =>
+                  handleDownloadFile(selectedInvoice.invoiceId, "receipts")
+                }
+                className="bg-blue-500 text-white px-3 py-1 rounded flex items-center hover:bg-blue-600 transition-colors"
+              >
+                Receipts
+                <FaDownload className="ml-1" />
+              </button>
+              <button
+                onClick={() =>
+                  handleDownloadFile(selectedInvoice.invoiceId, "approvals")
+                }
+                className="bg-green-500 text-white px-3 py-1 rounded flex items-center hover:bg-green-600 transition-colors"
+              >
+                Approvals
+                <FaDownload className="ml-1" />
+              </button>
+            </div>
+
+            {/* Close Button */}
+            <div className="flex justify-end pt-4 border-t">
+              <button
+                onClick={closeDetailsModal}
+                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

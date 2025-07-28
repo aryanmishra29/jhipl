@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { FaPlus, FaCheck, FaTimes, FaClock, FaFilter } from "react-icons/fa";
+import {
+  FaPlus,
+  FaCheck,
+  FaTimes,
+  FaClock,
+  FaFilter,
+  FaEye,
+  FaDownload,
+} from "react-icons/fa";
 import Modal from "react-modal";
 import axios from "axios";
 import { Search } from "lucide-react";
@@ -13,6 +21,8 @@ interface Reimbursement {
   glCode: string;
   costCenter: string;
   date: string;
+  generatedDate: string;
+  dateOfPayment: string;
   amount: number;
   advance: number;
   status: string;
@@ -36,7 +46,32 @@ const customStyles = {
     borderRadius: "8px",
     boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
     padding: "20px",
-    width: "600px",
+    width: "800px",
+    maxWidth: "90%",
+    maxHeight: "90vh",
+    overflow: "auto",
+    zIndex: 1000,
+  },
+  overlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 999,
+  },
+};
+
+const detailsModalStyles = {
+  content: {
+    top: "50%",
+    left: "50%",
+    right: "auto",
+    bottom: "auto",
+    marginRight: "-50%",
+    transform: "translate(-50%, -50%)",
+    backgroundColor: "#ffffff",
+    color: "#000000",
+    borderRadius: "8px",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+    padding: "40px",
+    width: "1000px",
     maxWidth: "90%",
     maxHeight: "90vh",
     overflow: "auto",
@@ -56,6 +91,13 @@ const ReimbursementTable: React.FC = () => {
   const [searchedFilteredReimbursements, setSearchedFilteredReimbursements] =
     useState<Reimbursement[]>(filteredReimbursements);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedReimbursement, setSelectedReimbursement] = useState<
+    Reimbursement | undefined
+  >(undefined);
+  const [costCenterDetails, setCostCenterDetails] = useState<
+    { costCenter: string; amount: number }[]
+  >([]);
   const [formData, setFormData] = useState({
     nameOfEmployee: "",
     glCode: "",
@@ -67,6 +109,10 @@ const ReimbursementTable: React.FC = () => {
     approvalDoc: null,
     description: "",
   });
+
+  const [costCenterRows, setCostCenterRows] = useState([
+    { costCenter: "", amount: "" },
+  ]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -85,7 +131,43 @@ const ReimbursementTable: React.FC = () => {
 
   const baseUrl = "https://jhipl.grobird.in";
   const user_id = localStorage.getItem("userId") || "";
-  console.log();
+
+  // Function to add a new cost center row
+  const addCostCenterRow = () => {
+    setCostCenterRows([...costCenterRows, { costCenter: "", amount: "" }]);
+  };
+
+  // Function to remove a cost center row
+  const removeCostCenterRow = (index: number) => {
+    if (costCenterRows.length > 1) {
+      const newRows = costCenterRows.filter((_, i) => i !== index);
+      setCostCenterRows(newRows);
+      updateAmountFromCostCenters(newRows);
+    }
+  };
+
+  // Function to update cost center row
+  const updateCostCenterRow = (index: number, field: string, value: string) => {
+    const newRows = [...costCenterRows];
+    newRows[index] = { ...newRows[index], [field]: value };
+    setCostCenterRows(newRows);
+    if (field === "amount") {
+      updateAmountFromCostCenters(newRows);
+    }
+  };
+
+  // Function to calculate total amount from cost center amounts
+  const updateAmountFromCostCenters = (rows: typeof costCenterRows) => {
+    const totalAmount = rows.reduce((sum, row) => {
+      const amount = parseFloat(row.amount) || 0;
+      return sum + amount;
+    }, 0);
+
+    setFormData((prev) => ({
+      ...prev,
+      amount: totalAmount.toFixed(2),
+    }));
+  };
 
   useEffect(() => {
     const newSearchedFilteredReimbursements = filteredReimbursements.filter(
@@ -209,6 +291,108 @@ const ReimbursementTable: React.FC = () => {
 
   const closeModal = () => {
     setIsModalOpen(false);
+    // Reset cost center rows
+    setCostCenterRows([{ costCenter: "", amount: "" }]);
+    // Reset form data
+    setFormData({
+      nameOfEmployee: "",
+      glCode: "",
+      costCenter: "",
+      date: "",
+      amount: "",
+      advance: "",
+      receipt: null,
+      approvalDoc: null,
+      description: "",
+    });
+  };
+
+  const openDetailsModal = async (reimbursement: Reimbursement) => {
+    setSelectedReimbursement(reimbursement);
+
+    // Get detailed reimbursement data to fetch baseAmountSplitForCostCenters
+    try {
+      const response = await fetch(
+        `${baseUrl}/reimbursements/${reimbursement.reimbursementId}`
+      );
+      if (response.ok) {
+        const detailedReimbursement = await response.json();
+
+        // Parse cost centers and amounts
+        const costCenterArray = reimbursement.costCenter
+          .split(";")
+          .filter((cc) => cc.trim() !== "");
+        const amountArray =
+          detailedReimbursement.baseAmountSplitForCostCenters || [];
+
+        // If baseAmountSplitForCostCenters is null/empty, use total amount for single cost center
+        if (!amountArray || amountArray.length === 0) {
+          setCostCenterDetails([
+            {
+              costCenter: costCenterArray[0] || reimbursement.costCenter,
+              amount: reimbursement.amount,
+            },
+          ]);
+        } else {
+          // Create cost center details with split amounts
+          const details = costCenterArray.map((costCenter, index) => ({
+            costCenter: costCenter.trim(),
+            amount: amountArray[index] || 0,
+          }));
+
+          setCostCenterDetails(details);
+        }
+      } else {
+        // Fallback to single cost center if detailed data fetch fails
+        setCostCenterDetails([
+          {
+            costCenter: reimbursement.costCenter.split(";")[0] || "",
+            amount: reimbursement.amount,
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error fetching detailed reimbursement data:", error);
+      // Fallback to single cost center
+      setCostCenterDetails([
+        {
+          costCenter: reimbursement.costCenter.split(";")[0] || "",
+          amount: reimbursement.amount,
+        },
+      ]);
+    }
+
+    setIsDetailsModalOpen(true);
+  };
+
+  const closeDetailsModal = () => {
+    setIsDetailsModalOpen(false);
+    setSelectedReimbursement(undefined);
+    setCostCenterDetails([]);
+  };
+
+  const handleDownloadFile = async (
+    reimbursementId: string,
+    fileType: "receipts" | "approvals"
+  ) => {
+    try {
+      const response = await fetch(
+        `${baseUrl}/reimbursements/${reimbursementId}/${fileType}`
+      );
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${fileType}-${reimbursementId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error(`Error downloading ${fileType}:`, error);
+    }
   };
 
   const handleChange = (
@@ -216,10 +400,18 @@ const ReimbursementTable: React.FC = () => {
   ) => {
     const files = (e.target as HTMLInputElement).files;
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: files ? files[0] : value,
-    }));
+
+    if (name === "amount") {
+      setFormData((prev) => ({
+        ...prev,
+        amount: value,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: files && files.length > 0 ? files[0] : value,
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -231,7 +423,6 @@ const ReimbursementTable: React.FC = () => {
     const {
       nameOfEmployee,
       glCode,
-      costCenter,
       date,
       amount,
       advance,
@@ -240,21 +431,46 @@ const ReimbursementTable: React.FC = () => {
       description,
     } = formData;
 
-    if (!nameOfEmployee || !glCode || !costCenter || !date || !amount) {
-      alert("Please fill in all required fields.");
+    // Validate cost center rows
+    const hasValidCostCenters = costCenterRows.every(
+      (row) => row.costCenter && row.amount
+    );
+    if (!hasValidCostCenters) {
+      alert("Please fill in all cost centers and amounts.");
+      setIsSubmitting(false);
       return;
     }
+
+    if (!nameOfEmployee || !glCode || !date || !amount) {
+      alert("Please fill in all required fields.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Prepare cost center data
+    const costCenterString = costCenterRows
+      .map((row) => row.costCenter)
+      .join(";");
+    const baseAmountForCostCenters = costCenterRows.map((row) =>
+      parseFloat(row.amount)
+    );
 
     // Create FormData to handle file uploads
     const form = new FormData();
     form.append("name", nameOfEmployee);
     form.append("glCode", glCode);
-    form.append("costCenter", costCenter);
+    form.append("costCenter", costCenterString);
     form.append("date", date);
     form.append("amount", amount);
     form.append("advance", advance);
     form.append("userId", user_id);
     form.append("description", description);
+
+    // Send array elements individually
+    baseAmountForCostCenters.forEach((amount) => {
+      form.append("baseAmountSplitForCostCenters", amount.toString());
+    });
+
     if (receipt) form.append("receipts", receipt);
     if (approvalDoc) form.append("approvals", approvalDoc);
 
@@ -395,7 +611,10 @@ const ReimbursementTable: React.FC = () => {
           <thead className="min-w-full">
             <tr>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                Date
+                Entry Date
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Document Date
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Name of Employee
@@ -418,6 +637,9 @@ const ReimbursementTable: React.FC = () => {
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Status
               </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="w-full">
@@ -429,6 +651,12 @@ const ReimbursementTable: React.FC = () => {
                   key={reimbursement.reimbursementId}
                   className="text-[#252525]"
                 >
+                  <td className="py-2 px-4 text-start border-b">
+                    {reimbursement.generatedDate &&
+                    reimbursement.generatedDate.trim() !== ""
+                      ? reimbursement.generatedDate
+                      : "-"}
+                  </td>
                   <td className="py-2 px-4 text-start border-b">
                     {reimbursement.date}
                   </td>
@@ -445,7 +673,7 @@ const ReimbursementTable: React.FC = () => {
                     {reimbursement.utrNo}
                   </td>
                   <td className="py-2 px-4 text-start border-b">
-                    {reimbursement.costCenter}
+                    {reimbursement.costCenter.replace(/;/g, ", ")}
                   </td>
                   <td className="py-2 px-4 text-start border-b">
                     {reimbursement.comments &&
@@ -470,6 +698,15 @@ const ReimbursementTable: React.FC = () => {
                       )}
                     </div>
                   </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    <button
+                      onClick={() => openDetailsModal(reimbursement)}
+                      className="bg-blue-500 text-white px-3 py-1 rounded flex items-center hover:bg-blue-600 transition-colors"
+                    >
+                      Details
+                      <FaEye className="ml-1" />
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -484,116 +721,487 @@ const ReimbursementTable: React.FC = () => {
         style={customStyles}
         contentLabel="Add Reimbursement Modal"
       >
-        <h2 className="text-2xl font-bold mb-4">Add New Reimbursement</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <SearchableDropdown
-              name="nameOfEmployee"
-              options={vendors.length > 0 ? vendors : ["N/A"]}
-              value={formData.nameOfEmployee}
-              onChange={handleChange}
-              placeholder="Select Employee Name"
-              required={true}
-            />
-            <SearchableDropdown
-              name="glCode"
-              options={glCodes.length > 0 ? glCodes : ["N/A"]}
-              value={formData.glCode}
-              onChange={handleChange}
-              placeholder="Select GL Code"
-              required={true}
-            />
-            <SearchableDropdown
-              name="costCenter"
-              options={costCenters.length > 0 ? costCenters : ["N/A"]}
-              value={formData.costCenter}
-              onChange={handleChange}
-              placeholder="Select Cost Center"
-              required={true}
-            />
-            <input
-              type="date"
-              name="date"
-              className="w-full border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
-              value={formData.date}
-              onChange={handleChange}
-              required
-            />
-            <div className="sm:flex sm:space-x-4 sm:space-y-0 space-y-4">
-              <input
-                type="number"
-                name="amount"
-                placeholder="Amount"
-                className="w-full sm:w-1/2 border rounded p-2 bg-white"
-                value={formData.amount}
-                onChange={handleChange}
-                required
-              />
+        <h2 className="text-2xl font-bold mb-6">Add New Reimbursement</h2>
+        <form onSubmit={handleSubmit} className="max-h-[80vh] overflow-y-auto">
+          {/* Basic Information */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Employee Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Employee Name
+                </label>
+                <SearchableDropdown
+                  name="nameOfEmployee"
+                  options={vendors.length > 0 ? vendors : ["N/A"]}
+                  value={formData.nameOfEmployee}
+                  onChange={handleChange}
+                  placeholder="Select Employee Name"
+                  required={true}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  GL Code
+                </label>
+                <SearchableDropdown
+                  name="glCode"
+                  options={glCodes.length > 0 ? glCodes : ["N/A"]}
+                  value={formData.glCode}
+                  onChange={handleChange}
+                  placeholder="Select GL Code"
+                  required={true}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  name="date"
+                  className="w-full border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
+                  value={formData.date}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
             </div>
-            <input
-              type="file"
-              name="receipt"
-              className="w-full border rounded p-2 bg-white"
-              onChange={handleChange}
-            />
-            <input
-              type="file"
-              name="approvalDoc"
-              className="w-full border rounded p-2 bg-white"
-              onChange={handleChange}
-            />
           </div>
-          <div className="flex flex-col max-w-xl w-full">
-            <label className="text-gray-500 ">Description</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              className="bg-transparent border border-gray-300 p-2 rounded-lg "
-            />
+
+          {/* Cost Centers Section */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Cost Center Allocation
+            </h3>
+            <div className="space-y-3">
+              {costCenterRows.map((row, index) => (
+                <div
+                  key={index}
+                  className="flex gap-3 items-end p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Cost Center
+                    </label>
+                    <SearchableDropdown
+                      name={`costCenter-${index}`}
+                      options={costCenters.length > 0 ? costCenters : ["N/A"]}
+                      value={row.costCenter}
+                      onChange={(e) =>
+                        updateCostCenterRow(
+                          index,
+                          "costCenter",
+                          e.target.value as string
+                        )
+                      }
+                      placeholder="Select Cost Center"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Amount
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="w-full border rounded p-2 bg-white"
+                      value={row.amount}
+                      onChange={(e) =>
+                        updateCostCenterRow(index, "amount", e.target.value)
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    {index === 0 && (
+                      <button
+                        type="button"
+                        onClick={addCostCenterRow}
+                        className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 transition-colors"
+                        title="Add Cost Center"
+                      >
+                        <FaPlus />
+                      </button>
+                    )}
+                    {costCenterRows.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeCostCenterRow(index)}
+                        className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition-colors"
+                        title="Remove Cost Center"
+                      >
+                        <FaTimes />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <div className="w-full">
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Total Amount{" "}
+                    <span className="text-xs text-gray-500">
+                      (Auto-calculated from cost centers, but editable)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="amount"
+                    className="w-full border rounded p-3 bg-white text-lg font-semibold"
+                    value={formData.amount}
+                    onChange={handleChange}
+                    placeholder="Auto-calculated or enter manually"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex justify-end space-x-4 mt-6">
+
+          {/* Documents and Description */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+              Additional Information
+            </h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Receipt Document
+                  </label>
+                  <input
+                    type="file"
+                    name="receipt"
+                    className="w-full border rounded p-2 bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    onChange={handleChange}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Approval Document
+                  </label>
+                  <input
+                    type="file"
+                    name="approvalDoc"
+                    className="w-full border rounded p-2 bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Enter reimbursement description or notes..."
+                  className="w-full border border-gray-300 p-3 rounded-lg bg-white resize-none"
+                  rows={3}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex justify-end space-x-4 pt-4 border-t">
             <button
               type="button"
-              className="bg-gray-300 text-gray-700 px-4 py-2 rounded"
+              className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg"
               onClick={closeModal}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className={`bg-[#636C59] text-white px-4 py-2 rounded ${
-                isSubmitting ? "cursor-not-allowed" : "cursor-pointer"
+              className={`bg-[#636C59] text-white px-6 py-2 rounded-lg font-semibold hover:bg-[#5a6350] transition-colors ${
+                isSubmitting
+                  ? "cursor-not-allowed opacity-50"
+                  : "cursor-pointer"
               }`}
               disabled={isSubmitting}
             >
               {isSubmitting ? (
-                <svg
-                  className="animate-spin h-5 w-5 text-black"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
+                <div className="flex items-center">
+                  <svg
+                    className="animate-spin h-5 w-5 text-white mr-2"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Saving...
+                </div>
               ) : (
                 "Add Reimbursement"
               )}
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Details Modal */}
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onRequestClose={closeDetailsModal}
+        style={detailsModalStyles}
+        contentLabel="Reimbursement Details"
+      >
+        <h2 className="text-2xl font-bold mb-6">Reimbursement Details</h2>
+        {selectedReimbursement && (
+          <div className="space-y-6">
+            {/* Basic Information */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+                Employee Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Employee Name
+                  </label>
+                  <div className="w-full border rounded p-3 bg-gray-50 text-gray-700">
+                    {selectedReimbursement.name}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    GL Code
+                  </label>
+                  <div className="w-full border rounded p-3 bg-gray-50 text-gray-700">
+                    {selectedReimbursement.glCode}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Date Information Section */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+                Date Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Document Date
+                  </label>
+                  <div className="w-full border rounded p-3 bg-gray-50 text-gray-700">
+                    {selectedReimbursement.date}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Entry Date
+                  </label>
+                  <div className="w-full border rounded p-3 bg-gray-50 text-gray-700">
+                    {selectedReimbursement.generatedDate &&
+                    selectedReimbursement.generatedDate.trim() !== ""
+                      ? selectedReimbursement.generatedDate
+                      : "-"}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Payment Date
+                  </label>
+                  <div className="w-full border rounded p-3 bg-gray-50 text-gray-700">
+                    {selectedReimbursement.dateOfPayment &&
+                    selectedReimbursement.dateOfPayment.trim() !== ""
+                      ? selectedReimbursement.dateOfPayment
+                      : "-"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cost Center Details Section */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+                Cost Center Allocation
+              </h3>
+              <div className="space-y-2">
+                {costCenterDetails.map((detail, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border"
+                  >
+                    <div className="font-medium text-gray-800">
+                      {detail.costCenter}
+                    </div>
+                    <div className="font-semibold text-green-600">
+                      ₹{detail.amount.toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+                {costCenterDetails.length > 1 && (
+                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="font-bold text-gray-800">Total Amount</div>
+                    <div className="font-bold text-blue-600">
+                      ₹
+                      {costCenterDetails
+                        .reduce((sum, detail) => sum + detail.amount, 0)
+                        .toFixed(2)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Financial Information */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+                Financial Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Amount
+                  </label>
+                  <div
+                    className={`w-full border rounded p-3 bg-gray-50 font-semibold ${
+                      selectedReimbursement.amount > 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    ₹{selectedReimbursement.amount.toFixed(2)}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Advance
+                  </label>
+                  <div className="w-full border rounded p-3 bg-gray-50 text-gray-700">
+                    ₹
+                    {selectedReimbursement.advance
+                      ? selectedReimbursement.advance.toFixed(2)
+                      : "0.00"}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    UTR No.
+                  </label>
+                  <div className="w-full border rounded p-3 bg-gray-50 text-gray-700">
+                    {selectedReimbursement.utrNo || "-"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Status and Additional Information */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+                Status & Additional Information
+              </h3>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Status
+                  </label>
+                  <div className="w-full border rounded p-3 bg-gray-50">
+                    <div
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
+                        selectedReimbursement.status === "APPROVED"
+                          ? "bg-green-100 text-green-800"
+                          : selectedReimbursement.status === "PENDING"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {selectedReimbursement.status === "APPROVED" ? (
+                        <FaCheck className="mr-1" />
+                      ) : selectedReimbursement.status === "PENDING" ? (
+                        <FaClock className="mr-1" />
+                      ) : (
+                        <FaTimes className="mr-1" />
+                      )}
+                      {selectedReimbursement.status}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Description
+                  </label>
+                  <div className="w-full border rounded p-3 bg-gray-50 text-gray-700 min-h-[60px]">
+                    {selectedReimbursement.description || "-"}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Comments
+                  </label>
+                  <div className="w-full border rounded p-3 bg-gray-50 text-gray-700 min-h-[60px]">
+                    {selectedReimbursement.comments || "-"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Document Downloads */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+                Documents
+              </h3>
+              <div className="flex space-x-4">
+                <button
+                  onClick={() =>
+                    handleDownloadFile(
+                      selectedReimbursement.reimbursementId,
+                      "receipts"
+                    )
+                  }
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors"
+                >
+                  <FaDownload className="mr-2" />
+                  Download Receipts
+                </button>
+                <button
+                  onClick={() =>
+                    handleDownloadFile(
+                      selectedReimbursement.reimbursementId,
+                      "approvals"
+                    )
+                  }
+                  className="bg-green-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-600 transition-colors"
+                >
+                  <FaDownload className="mr-2" />
+                  Download Approvals
+                </button>
+              </div>
+            </div>
+
+            {/* Close Button */}
+            <div className="flex justify-end pt-4 border-t">
+              <button
+                onClick={closeDetailsModal}
+                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

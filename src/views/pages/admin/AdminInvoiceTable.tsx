@@ -29,6 +29,8 @@ interface Invoice {
   paymentType: string;
   poId: string;
   date: string;
+  generatedDate: string;
+  dateOfPayment: string;
   baseAmount: number;
   finalAmount: number;
   vendor: string;
@@ -114,6 +116,8 @@ const AdminInvoiceTable: React.FC = () => {
     invoiceNumber: "",
     glCode: "",
     invoiceDate: "",
+    generatedDate: "",
+    dateOfPayment: "",
     costCenter: "",
     poNumber: "",
     paymentType: "",
@@ -379,6 +383,8 @@ const AdminInvoiceTable: React.FC = () => {
       invoiceNumber: invoice.number,
       glCode: invoice.glCode,
       invoiceDate: invoice.date,
+      generatedDate: invoice.generatedDate || "",
+      dateOfPayment: invoice.dateOfPayment || "",
       costCenter: invoice.costCenter,
       poNumber: idToPo.get(invoice.poId) || "",
       paymentType: invoice.paymentType,
@@ -581,9 +587,14 @@ const AdminInvoiceTable: React.FC = () => {
     const { name, value } = e.target;
     const files = e.currentTarget.files;
 
-    // If admin is restricted and trying to change fields other than status or description, prevent it
+    // If admin is restricted and trying to change fields other than status, description, or dateOfPayment, prevent it
     const restrictedAdmin = isRestrictedAdmin();
-    if (restrictedAdmin && name !== "status" && name !== "description") {
+    if (
+      restrictedAdmin &&
+      name !== "status" &&
+      name !== "description" &&
+      name !== "dateOfPayment"
+    ) {
       return;
     }
 
@@ -897,6 +908,7 @@ const AdminInvoiceTable: React.FC = () => {
         baseAmountSplitForCostCenters: baseAmountSplitForCostCenters, // Send as Double array
         poId: poDetails.get(formData.poNumber) || "",
         date: formData.invoiceDate,
+        dateOfPayment: formData.dateOfPayment || "",
         baseAmount: parseFloat(formData.baseAmount),
         finalAmount: parseFloat(formData.total),
         vendor: formData.companyName,
@@ -1110,10 +1122,13 @@ const AdminInvoiceTable: React.FC = () => {
           <thead className="bg-gray-100">
             <tr>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Entry Date
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Invoice#
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                Date
+                Document Date
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Vendor
@@ -1147,6 +1162,11 @@ const AdminInvoiceTable: React.FC = () => {
           <tbody className="w-full">
             {searchFilteredInvoices.map((invoice, index) => (
               <tr key={index} className="text-[#252525]">
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.generatedDate && invoice.generatedDate.trim() !== ""
+                    ? invoice.generatedDate
+                    : "-"}
+                </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.number}
                 </td>
@@ -1261,7 +1281,7 @@ const AdminInvoiceTable: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="text-gray-500">Invoice Date</label>
+                <label className="text-gray-500">Document Date</label>
                 <input
                   type="date"
                   name="invoiceDate"
@@ -1271,6 +1291,30 @@ const AdminInvoiceTable: React.FC = () => {
                   value={formData.invoiceDate}
                   onChange={handleChange}
                   required
+                  disabled={isRestrictedAdmin()}
+                />
+              </div>
+              <div>
+                <label className="text-gray-500">Entry Date (Read-only)</label>
+                <input
+                  type="date"
+                  name="generatedDate"
+                  className="w-full border bg-gray-100 text-black rounded p-2 cursor-not-allowed"
+                  value={formData.generatedDate}
+                  disabled
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="text-gray-500">Payment Date</label>
+                <input
+                  type="date"
+                  name="dateOfPayment"
+                  className={`w-full border bg-white text-black rounded p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer ${
+                    isRestrictedAdmin() ? "bg-gray-100 cursor-not-allowed" : ""
+                  }`}
+                  value={formData.dateOfPayment}
+                  onChange={handleChange}
                   disabled={isRestrictedAdmin()}
                 />
               </div>

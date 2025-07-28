@@ -1,10 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { FaPlus } from "react-icons/fa";
+import { FaPlus, FaDownload, FaEye } from "react-icons/fa";
 import { Search } from "lucide-react";
 import Modal from "react-modal";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { isBlockedDate, getBlockedDateMessage } from "../../../utils/dateUtils";
+
+interface DetailedPurchaseOrder {
+  poId: string;
+  poNumber: string;
+  vendor: string;
+  paymentType: string;
+  date: string;
+  generatedDate: string;
+  quotationAmount: number;
+  baseAmount: number;
+  remainingAmount: number;
+  finalAmount: number;
+  sgst: string;
+  sgstAmount: number;
+  cgst: string;
+  cgstAmount: number;
+  igst: string;
+  igstAmount: number;
+  narration: string;
+  poRequestId: string;
+}
 
 const customStyles = {
   content: {
@@ -41,6 +62,12 @@ const Purchase: React.FC = () => {
   const [filteredPORequests, setFilteredPORequests] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedPoRequestId, setSelectedPoRequestId] = useState<string>("");
+  const [selectedPO, setSelectedPO] = useState<DetailedPurchaseOrder | null>(
+    null
+  );
   const [activeTab, setActiveTab] = useState<"requests" | "orders">("requests");
   const [formData, setFormData] = useState({
     requisitionNumber: "",
@@ -55,6 +82,97 @@ const Purchase: React.FC = () => {
   const baseUrl = "https://jhipl.grobird.in";
   // const baseUrl = "http://localhost:8080";
   const user_id = localStorage.getItem("userId") || "";
+
+  const handleDownload = async (poRequestId: string, fileType: string) => {
+    try {
+      const response = await fetch(
+        `${baseUrl}/purchase-orders/request/${poRequestId}/${fileType}`
+      );
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${fileType}-${poRequestId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error(`Error downloading ${fileType}:`, error);
+    }
+  };
+
+  const handleDownloadDocsClick = (poRequestId: string) => {
+    setSelectedPoRequestId(poRequestId);
+    setIsDownloadModalOpen(true);
+  };
+
+  const closeDownloadModal = () => {
+    setIsDownloadModalOpen(false);
+    setSelectedPoRequestId("");
+  };
+
+  const handleDetailsClick = async (po: any) => {
+    try {
+      // Fetch detailed PO data
+      const response = await axios.get(`${baseUrl}/purchase-orders/${po.poId}`);
+      if (response.status === 200) {
+        setSelectedPO(response.data);
+        setIsDetailsModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error fetching PO details:", error);
+      // Fallback to basic data if detailed fetch fails
+      setSelectedPO({
+        poId: po.poId,
+        poNumber: po.poNumber,
+        vendor: po.vendor,
+        paymentType: po.paymentType,
+        date: po.date,
+        generatedDate: po.generatedDate || "",
+        quotationAmount: po.finalAmount || 0,
+        baseAmount: po.finalAmount || 0,
+        remainingAmount: po.remainingAmount || 0,
+        finalAmount: po.finalAmount || 0,
+        sgst: "0",
+        sgstAmount: 0,
+        cgst: "0",
+        cgstAmount: 0,
+        igst: "0",
+        igstAmount: 0,
+        narration: "",
+        poRequestId: po.poRequestId || "",
+      });
+      setIsDetailsModalOpen(true);
+    }
+  };
+
+  const closeDetailsModal = () => {
+    setIsDetailsModalOpen(false);
+    setSelectedPO(null);
+  };
+
+  const handleDownloadPODoc = async (poId: string) => {
+    try {
+      // First try to download the purchase order file
+      const response = await fetch(`${baseUrl}/purchase-orders/${poId}/file`);
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `purchase-order-${poId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Error downloading purchase order:", error);
+    }
+  };
 
   // Search functionality
   useEffect(() => {
@@ -300,7 +418,7 @@ const Purchase: React.FC = () => {
             <thead className="min-w-full sticky top-0 backdrop-blur-xl">
               <tr>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Date
+                  Entry Date
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Requisition Number
@@ -313,6 +431,9 @@ const Purchase: React.FC = () => {
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Reason of Rejection
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -354,6 +475,17 @@ const Purchase: React.FC = () => {
                       ? request.reasonOfRejection
                       : "-"}
                   </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    <button
+                      onClick={() =>
+                        handleDownloadDocsClick(request.poRequestId)
+                      }
+                      className="bg-blue-500 text-white px-3 py-1 rounded flex items-center hover:bg-blue-600 transition-colors"
+                    >
+                      <FaDownload className="mr-1" />
+                      Download Docs
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -365,10 +497,13 @@ const Purchase: React.FC = () => {
             <thead className="min-w-full sticky top-0 backdrop-blur-xl">
               <tr>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Entry Date
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   PO Number
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                  Date
+                  Document Date
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Vendor
@@ -382,15 +517,25 @@ const Purchase: React.FC = () => {
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Payment Type
                 </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="w-full">
               {filteredPurchaseOrders.map((po) => (
                 <tr key={po.poId} className="text-[#252525]">
                   <td className="py-2 px-4 text-start border-b">
+                    {po.generatedDate && po.generatedDate.trim() !== ""
+                      ? po.generatedDate
+                      : "-"}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
                     {po.poNumber}
                   </td>
-                  <td className="py-2 px-4 text-start border-b">{po.date}</td>
+                  <td className="py-2 px-4 text-start border-b">
+                    {po.date && po.date.trim() !== "" ? po.date : "-"}
+                  </td>
                   <td className="py-2 px-4 text-start border-b">{po.vendor}</td>
                   <td className="py-2 px-4 text-start border-b">
                     {po.remainingAmount}
@@ -400,6 +545,15 @@ const Purchase: React.FC = () => {
                   </td>
                   <td className="py-2 px-4 text-start border-b">
                     {po.paymentType}
+                  </td>
+                  <td className="py-2 px-4 text-start border-b">
+                    <button
+                      onClick={() => handleDetailsClick(po)}
+                      className="bg-blue-500 text-white px-3 py-1 rounded flex items-center hover:bg-blue-600 transition-colors"
+                    >
+                      <FaEye className="mr-1" />
+                      Details
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -546,6 +700,238 @@ const Purchase: React.FC = () => {
             )}
           </button>
         </form>
+      </Modal>
+
+      {/* Download Documents Modal */}
+      <Modal
+        isOpen={isDownloadModalOpen}
+        onRequestClose={closeDownloadModal}
+        style={customStyles}
+        contentLabel="Download Documents Modal"
+      >
+        <h2 className="text-2xl font-bold mb-6">Download Documents</h2>
+        <p className="text-gray-600 mb-4">
+          Download all documents for PO Request ID: {selectedPoRequestId}
+        </p>
+        <div className="flex flex-col space-y-3">
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors"
+            onClick={() =>
+              handleDownload(selectedPoRequestId, "requisition-form")
+            }
+          >
+            <FaDownload className="mr-2" />
+            Download Requisition Form
+          </button>
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors"
+            onClick={() =>
+              handleDownload(selectedPoRequestId, "comparative-form")
+            }
+          >
+            <FaDownload className="mr-2" />
+            Download Comparative Form
+          </button>
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors"
+            onClick={() => handleDownload(selectedPoRequestId, "quotation1")}
+          >
+            <FaDownload className="mr-2" />
+            Download Quotation 1
+          </button>
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors"
+            onClick={() => handleDownload(selectedPoRequestId, "quotation2")}
+          >
+            <FaDownload className="mr-2" />
+            Download Quotation 2
+          </button>
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors"
+            onClick={() => handleDownload(selectedPoRequestId, "quotation3")}
+          >
+            <FaDownload className="mr-2" />
+            Download Quotation 3
+          </button>
+        </div>
+        <div className="flex justify-end pt-6 border-t mt-6">
+          <button
+            onClick={closeDownloadModal}
+            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </Modal>
+
+      {/* Purchase Order Details Modal */}
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onRequestClose={closeDetailsModal}
+        style={customStyles}
+        contentLabel="Purchase Order Details Modal"
+      >
+        <h2 className="text-2xl font-bold mb-6">Purchase Order Details</h2>
+        {selectedPO && (
+          <div className="max-h-[80vh] overflow-y-auto space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  PO Number
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.poNumber}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vendor
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.vendor}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Payment Type
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.paymentType}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Document Date
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.date || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Entry Date
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.generatedDate || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quotation Amount
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.quotationAmount.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Base Amount
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.baseAmount.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Remaining Amount
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.remainingAmount.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  IGST
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.igst || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  IGST Amount
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.igstAmount.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  SGST
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.sgst || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  SGST Amount
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.sgstAmount.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  CGST
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.cgst || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  CGST Amount
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700">
+                  {selectedPO.cgstAmount.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Final Amount
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-lg font-semibold text-gray-700">
+                  {selectedPO.finalAmount.toFixed(2)}
+                </div>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Narration
+                </label>
+                <div className="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-700 min-h-[60px]">
+                  {selectedPO.narration || "-"}
+                </div>
+              </div>
+            </div>
+
+            {/* Download Document Button */}
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="text-lg font-semibold text-gray-700 mb-3">
+                Documents
+              </h3>
+              <button
+                onClick={() =>
+                  handleDownloadPODoc(selectedPO.poId)
+                }
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors"
+              >
+                <FaDownload className="mr-2" />
+                Download Purchase Order
+              </button>
+            </div>
+
+            {/* Close Button */}
+            <div className="flex justify-end pt-4 border-t">
+              <button
+                onClick={closeDetailsModal}
+                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

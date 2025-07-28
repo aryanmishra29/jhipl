@@ -20,6 +20,7 @@ interface PurchaseOrder {
   vendor: string;
   userId: string;
   date: string;
+  generatedDate: string;
   paymentType: string;
 }
 
@@ -74,6 +75,7 @@ const PurchaseOrder: React.FC = () => {
     cgstAmount: "",
     total: "",
     narration: "",
+    date: "",
     poFile: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,6 +110,7 @@ const PurchaseOrder: React.FC = () => {
     igstAmount: "",
     narration: "",
     date: "",
+    generatedDate: "",
   });
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
@@ -226,6 +229,7 @@ const PurchaseOrder: React.FC = () => {
         vendor: po.vendor,
         userId: po.userId,
         date: po.date,
+        generatedDate: po.generatedDate || "",
         paymentType: po.paymentType,
       }));
       if (isRestrictedAdmin()) {
@@ -277,6 +281,25 @@ const PurchaseOrder: React.FC = () => {
     setIsEditModalOpen(false);
     setRejectReason("");
     setSelectedPOForEdit(null);
+    // Reset formData when closing
+    setFormData({
+      poRequestId: "",
+      poNumber: "",
+      vendor: "",
+      paymentType: "",
+      quotationAmount: "",
+      baseAmount: "",
+      igst: "",
+      igstAmount: "",
+      sgst: "",
+      sgstAmount: "",
+      cgst: "",
+      cgstAmount: "",
+      total: "",
+      narration: "",
+      date: "",
+      poFile: null,
+    });
   };
 
   const handleChange = (
@@ -406,6 +429,7 @@ const PurchaseOrder: React.FC = () => {
       poNumber,
       paymentType,
       vendor,
+      date,
       quotationAmount,
       baseAmount,
       igst,
@@ -425,6 +449,7 @@ const PurchaseOrder: React.FC = () => {
       !poNumber ||
       !paymentType ||
       !vendor ||
+      !date ||
       !quotationAmount ||
       !baseAmount ||
       !igst ||
@@ -438,6 +463,7 @@ const PurchaseOrder: React.FC = () => {
       !poFile
     ) {
       alert("Please fill in all required fields.");
+      setIsSubmitting(false);
       return;
     }
     console.log(selectedPoId);
@@ -446,6 +472,7 @@ const PurchaseOrder: React.FC = () => {
       poNumber,
       vendor,
       paymentType,
+      date: formData.date,
       quotationAmount: parseFloat(quotationAmount),
       baseAmount: parseFloat(baseAmount),
       finalAmount: parseFloat(total),
@@ -585,6 +612,7 @@ const PurchaseOrder: React.FC = () => {
       igstAmount: "0",
       narration: "",
       date: po.date,
+      generatedDate: po.generatedDate,
     });
     setIsEditModalOpen(true);
   };
@@ -735,6 +763,7 @@ const PurchaseOrder: React.FC = () => {
       igstAmount: parseFloat(editFormData.igstAmount),
       narration: editFormData.narration,
       date: editFormData.date,
+      // Note: generatedDate is excluded as it's read-only
     };
 
     try {
@@ -963,7 +992,10 @@ const PurchaseOrder: React.FC = () => {
               <thead className="min-w-full sticky top-14 backdrop-blur-xl">
                 <tr>
                   <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
-                    Date
+                    Entry Date
+                  </th>
+                  <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                    Document Date
                   </th>
                   <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                     PO Number
@@ -988,6 +1020,11 @@ const PurchaseOrder: React.FC = () => {
               <tbody className="w-full">
                 {filteredPurchaseOrders.map((po) => (
                   <tr key={po.poId} className="text-[#252525]">
+                    <td className="py-2 px-4 text-start border-b">
+                      {po.generatedDate && po.generatedDate.trim() !== ""
+                        ? po.generatedDate
+                        : "-"}
+                    </td>
                     <td className="py-2 px-4 text-start border-b">
                       {po.date && po.date.trim() !== "" ? po.date : "-"}
                     </td>
@@ -1054,6 +1091,22 @@ const PurchaseOrder: React.FC = () => {
               />
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Document Date
+              </label>
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-transparent border p-2 [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Payment Type
+              </label>
               <select
                 name="paymentType"
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-transparent border p-2"
@@ -1458,7 +1511,7 @@ const PurchaseOrder: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date
+                Document Date
               </label>
               <input
                 type="date"
@@ -1467,6 +1520,19 @@ const PurchaseOrder: React.FC = () => {
                 onChange={handleEditChange}
                 required
                 className="w-full border border-gray-300 rounded p-2 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Entry Date (Read-only)
+              </label>
+              <input
+                type="date"
+                name="generatedDate"
+                value={editFormData.generatedDate}
+                disabled
+                readOnly
+                className="w-full border border-gray-300 rounded p-2 bg-gray-100 cursor-not-allowed"
               />
             </div>
             <div>
