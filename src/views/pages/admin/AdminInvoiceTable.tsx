@@ -1131,6 +1131,9 @@ const AdminInvoiceTable: React.FC = () => {
                 Document Date
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                Payment Date
+              </th>
+              <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                 Vendor
               </th>
               <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
@@ -1172,6 +1175,9 @@ const AdminInvoiceTable: React.FC = () => {
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.date}
+                </td>
+                <td className="py-2 px-4 text-start border-b">
+                  {invoice.dateOfPayment}
                 </td>
                 <td className="py-2 px-4 text-start border-b">
                   {invoice.vendor}

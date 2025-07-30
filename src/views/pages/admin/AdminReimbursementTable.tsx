@@ -662,6 +662,9 @@ const AdminReimbursementTable: React.FC = () => {
                   Document Date
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
+                  Payment Date
+                </th>
+                <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
                   Name
                 </th>
                 <th className="py-2 text-start px-4 border-b sticky top-0 bg-white z-10">
@@ -701,6 +704,9 @@ const AdminReimbursementTable: React.FC = () => {
                     </td>
                     <td className="py-2 px-4 text-start border-b">
                       {reimbursement.date}
+                    </td>
+                    <td className="py-2 px-4 text-start border-b">
+                      {reimbursement.dateOfPayment}
                     </td>
                     <td className="py-2 px-4 text-start border-b">
                       {reimbursement.name}
